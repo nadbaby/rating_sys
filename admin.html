@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard - Feedback Portal</title>
+  <meta name="description" content="Admin dashboard to monitor customer feedback." />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <!-- Toast Notification -->
+  <div id="toast" class="toast">Link copied to clipboard!</div>
+
+  <header class="container main-header">
+    <div class="logo">
+      <span class="logo-accent">Feedback</span>Portal
+    </div>
+    <button id="logoutBtn" class="logout-btn">
+      <svg class="logout-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+      Sign Out
+    </button>
+  </header>
+
+  <main class="container">
+    <section class="admin-dashboard glass-panel" id="dashboardSection">
+      <div class="dashboard-header">
+        <h1>Dashboard</h1>
+        <!-- Navigation Tabs -->
+        <div class="tab-navigation">
+          <button class="tab-btn active" data-tab="statsTab">
+            <svg class="tab-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+            Analytics Overview
+          </button>
+          <button class="tab-btn" data-tab="employeesTab">
+            <svg class="tab-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+            Employee Directory
+          </button>
+          <button class="tab-btn" data-tab="leaderboardTab">
+            <svg class="tab-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path></svg>
+            Leaderboard
+          </button>
+        </div>
+      </div>
+
+      <!-- ================= Tab 1: Analytics Overview ================= -->
+      <div id="statsTab" class="tab-content active">
+        <div class="filter-section card-dark">
+          <div class="filter-group">
+            <label for="dateFrom">From:</label>
+            <input type="date" id="dateFrom" />
+          </div>
+          <div class="filter-group">
+            <label for="dateTo">To:</label>
+            <input type="date" id="dateTo" />
+          </div>
+          <button id="applyFilter" class="btn-primary">Apply Filters</button>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card glass-card">
+            <div class="label">Total Feedback</div>
+            <div class="value" id="totalFeedback">0</div>
+          </div>
+          <div class="stat-card glass-card">
+            <div class="label">Average Rating</div>
+            <div class="value" id="avgRating">0</div>
+          </div>
+          <div class="stat-card glass-card">
+            <div class="label">Today's Reviews</div>
+            <div class="value" id="todayFeedback">0</div>
+          </div>
+          <div class="stat-card glass-card">
+            <div class="label">Top Rated Employee</div>
+            <div class="value value-accent" id="bestCounter">-</div>
+          </div>
+          <div class="stat-card glass-card">
+            <div class="label">Needs Improvement</div>
+            <div class="value value-warning" id="worstCounter">-</div>
+          </div>
+        </div>
+
+        <div class="chart-container glass-card">
+          <h3>Rating Trend Over Time</h3>
+          <canvas id="ratingTrendChart"></canvas>
+        </div>
+
+        <div class="recent-comments-section glass-card">
+          <h2>Recent Comments</h2>
+          <div class="recent-comments" id="recentComments">
+            <div class="no-data">No comments available.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= Tab 2: Employee Directory ================= -->
+      <div id="employeesTab" class="tab-content">
+        <div class="employee-layout">
+          <!-- Add Employee Card -->
+          <div class="add-employee-card glass-card">
+            <h2>Add New Employee</h2>
+            <form id="addEmployeeForm">
+              <div class="form-group">
+                <label for="newEmpId">Employee ID</label>
+                <input type="text" id="newEmpId" placeholder="e.g. emp_101" required pattern="^[a-zA-Z0-9_\-]+$" title="Alphanumeric characters, underscores, and hyphens only." />
+                <small class="helper-text">This will be used in their unique link (e.g. ?empId=emp_101)</small>
+              </div>
+              <div class="form-group">
+                <label for="newEmpName">Full Name</label>
+                <input type="text" id="newEmpName" placeholder="e.g. John Doe" required />
+              </div>
+              <button type="submit" class="btn-primary">Register Employee</button>
+            </form>
+          </div>
+
+          <!-- Employee List Card -->
+          <div class="employee-list-card glass-card">
+            <h2>Employees</h2>
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Average Rating</th>
+                    <th>Reviews</th>
+                    <th>Unique Link</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="employeeTableBody">
+                  <tr>
+                    <td colspan="6" class="no-data">Loading employees...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= Tab 3: Leaderboard ================= -->
+      <div id="leaderboardTab" class="tab-content">
+        <div class="leaderboard-card glass-card">
+          <div class="leaderboard-header">
+            <h2>Employee Leaderboard</h2>
+            <p class="helper-text" style="margin-bottom: 20px;">Ranked by average rating (highest first) and total reviews count</p>
+          </div>
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Employee</th>
+                  <th>ID</th>
+                  <th>Average Rating</th>
+                  <th>Ratings Count</th>
+                  <th>Performance</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboardTableBody">
+                <tr>
+                  <td colspan="6" class="no-data">Loading rankings...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <script type="module" src="js/admin.js"></script>
+</body>
+</html>

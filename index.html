@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Submit Feedback - Portal</title>
+  <meta name="description" content="Give us your feedback for improving our service." />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="container main-header">
+    <div class="logo">
+      <span class="logo-accent">Feedback</span>Portal
+    </div>
+  </header>
+
+  <main class="container feedback-container">
+    <section class="feedback-panel glass-panel" id="feedbackSection">
+      
+      <!-- Loading State -->
+      <div id="loadingCard" class="status-panel">
+        <div class="spinner"></div>
+        <p>Verifying link details...</p>
+      </div>
+
+      <!-- Error State -->
+      <div id="errorCard" class="status-panel error-panel" style="display: none;">
+        <div class="error-icon-circle">
+          <svg class="error-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+        </div>
+        <h3>Link Expired or Invalid</h3>
+        <p id="errorMessage">The feedback link is incorrect or the employee does not exist.</p>
+      </div>
+
+      <!-- Form Content (hidden by default, shown after verification) -->
+      <div id="formContainer" style="display: none;">
+        <div id="employeeCard" class="employee-profile-card">
+          <div class="employee-avatar" id="employeeAvatar">?</div>
+          <div class="employee-details">
+            <h3 id="employeeName">Employee Name</h3>
+            <span class="employee-badge" id="employeeBadge">ID: -</span>
+          </div>
+        </div>
+
+        <h2 id="formTitle">Submit Your Rating</h2>
+        
+        <form id="feedbackForm">
+          <div class="star-rating">
+            <input type="radio" name="rating" id="star5" value="5" /><label for="star5">★</label>
+            <input type="radio" name="rating" id="star4" value="4" /><label for="star4">★</label>
+            <input type="radio" name="rating" id="star3" value="3" /><label for="star3">★</label>
+            <input type="radio" name="rating" id="star2" value="2" /><label for="star2">★</label>
+            <input type="radio" name="rating" id="star1" value="1" /><label for="star1">★</label>
+          </div>
+          <div class="form-group">
+            <textarea name="comment" placeholder="Share your experience or comments (optional)..."></textarea>
+          </div>
+          <button type="submit" class="btn-primary">Submit Feedback</button>
+        </form>
+      </div>
+
+      <!-- Thank You Message -->
+      <div class="thank-you" id="thankYouMessage" style="display:none;">
+        <div class="success-icon-circle">
+          <svg class="success-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+        <h2>Feedback Submitted!</h2>
+        <p>Thank you for taking the time to share your feedback. We value your input.</p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

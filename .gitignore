@@ -1,0 +1,5 @@
+node_modules/
+db.json
+db.json.tmp
+.DS_Store
+Thumbs.db
