@@ -78,20 +78,8 @@ async function init() {
     loadingCard.style.display = 'none';
     formContainer.style.display = 'block';
   } else {
-    // General Feedback fallback
-    currentEmployeeId = null;
-    currentCounterName = "Store Feedback";
-
-    employeeNameEl.textContent = "General Store Feedback";
-    employeeBadge.textContent = "General";
-    employeeAvatar.textContent = "S";
-    employeeAvatar.style.background = 'linear-gradient(135deg, #1e293b, #475569)';
-    employeeCard.style.display = 'flex';
-
-    formTitle.textContent = "Your Feedback";
-
-    loadingCard.style.display = 'none';
-    formContainer.style.display = 'block';
+    // No employee ID or counter specified, redirect to admin login page
+    window.location.href = "login.html";
   }
 }
 
