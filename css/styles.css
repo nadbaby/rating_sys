@@ -669,8 +669,9 @@ textarea {
   direction: rtl;
   display: flex;
   justify-content: center;
-  font-size: 3rem;
+  font-size: 4.5rem;
   margin-bottom: 1.5rem;
+  gap: 0.5rem;
 }
 
 .star-rating input {
@@ -846,7 +847,8 @@ textarea {
     border-radius: 16px;
   }
   .star-rating {
-    font-size: 2.5rem;
+    font-size: 3.5rem;
+    gap: 0.35rem;
   }
 }
 
