@@ -11,6 +11,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+  <!-- Decorative Background Glows -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
   <header class="container main-header">
     <div class="logo">
       <span class="logo-accent">Feedback</span>Portal
@@ -24,6 +28,20 @@
       <div id="loadingCard" class="status-panel">
         <div class="spinner"></div>
         <p>Verifying link details...</p>
+      </div>
+
+      <!-- Welcome / Instructions State (No ID provided) -->
+      <div id="welcomeCard" class="status-panel welcome-panel" style="display: none;">
+        <div class="welcome-icon-circle">
+          <svg class="welcome-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v1M18 8h2M4 8h2M12 12h.01M16 20h2M12 4a2 2 0 110 4 2 2 0 010-4zM6 20h2m-2-4h2m-2-4h2M6 8h2"></path>
+          </svg>
+        </div>
+        <h3>Welcome to the Feedback Portal</h3>
+        <p>Please scan the QR code located at the service counter to submit your feedback.</p>
+        <div style="margin-top: 1rem; display: flex; gap: 1rem; justify-content: center; width: 100%;">
+          <a href="login.html" class="btn-secondary">Go to Admin Login</a>
+        </div>
       </div>
 
       <!-- Error State -->
@@ -55,6 +73,7 @@
             <input type="radio" name="rating" id="star2" value="2" /><label for="star2">★</label>
             <input type="radio" name="rating" id="star1" value="1" /><label for="star1">★</label>
           </div>
+          <div class="rating-label-desc" id="ratingDesc">Tap a star to rate</div>
           <div class="form-group">
             <textarea name="comment" placeholder="Share your experience or comments (optional)..."></textarea>
           </div>

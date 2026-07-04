@@ -22,6 +22,8 @@ const employeeBadge = document.getElementById('employeeBadge');
 const formTitle = document.getElementById('formTitle');
 const form = document.getElementById('feedbackForm');
 const thankYou = document.getElementById('thankYouMessage');
+const welcomeCard = document.getElementById('welcomeCard');
+const ratingDesc = document.getElementById('ratingDesc');
 
 // State variables
 let currentEmployeeId = null;
@@ -78,8 +80,9 @@ async function init() {
     loadingCard.style.display = 'none';
     formContainer.style.display = 'block';
   } else {
-    // No employee ID or counter specified, redirect to admin login page
-    window.location.href = "login.html";
+    // No employee ID or counter specified, show welcome instruction card
+    loadingCard.style.display = 'none';
+    if (welcomeCard) welcomeCard.style.display = 'flex';
   }
 }
 
@@ -87,6 +90,24 @@ function showError(msg) {
   loadingCard.style.display = 'none';
   errorMessage.textContent = msg;
   errorCard.style.display = 'flex';
+}
+
+// Add change listener to update rating description
+if (form && ratingDesc) {
+  form.addEventListener('change', (e) => {
+    if (e.target.name === 'rating') {
+      const val = Number(e.target.value);
+      const descriptions = {
+        1: "Terrible 😠",
+        2: "Bad 🙁",
+        3: "Okay 😐",
+        4: "Good 🙂",
+        5: "Excellent 😄"
+      };
+      ratingDesc.textContent = descriptions[val] || "Tap a star to rate";
+      ratingDesc.classList.add('selected');
+    }
+  });
 }
 
 form.addEventListener('submit', async (e) => {
