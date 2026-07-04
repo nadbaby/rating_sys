@@ -329,9 +329,6 @@ if (document.getElementById("dashboardSection")) {
         });
       }
 
-      // Render chart
-      renderChart(feedbacks);
-
       // Render Employee List Table
       renderEmployeeTable(employees, empStats);
 
@@ -457,60 +454,7 @@ if (document.getElementById("dashboardSection")) {
       });
     }
 
-    // Render Chart
-    function renderChart(data) {
-      const daily = {};
-      data.forEach((f) => {
-        const d = formatDate(f.createdAt);
-        if (d === "N/A") return;
-        if (!daily[d]) daily[d] = { sum: 0, count: 0 };
-        daily[d].sum += f.rating;
-        daily[d].count += 1;
-      });
-      const labels = Object.keys(daily).sort();
-      const values = labels.map((d) => (daily[d].sum / daily[d].count).toFixed(2));
-      const ctx = document.getElementById("ratingTrendChart").getContext("2d");
-      
-      if (window.ratingChart) window.ratingChart.destroy();
-      window.ratingChart = new Chart(ctx, {
-        type: "bar",
-        data: {
-          labels,
-          datasets: [{
-            label: "Avg Rating",
-            data: values,
-            borderColor: "#ea580c",
-            backgroundColor: "rgba(234, 88, 12, 0.7)",
-            hoverBackgroundColor: "#f97316",
-            hoverBorderColor: "#fff",
-            borderWidth: 1.5,
-            borderRadius: 6,
-            borderSkipped: false,
-            barPercentage: 0.6,
-            maxBarThickness: 40
-          }],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: { 
-              beginAtZero: true, 
-              max: 5,
-              grid: { color: "rgba(255, 255, 255, 0.05)" },
-              ticks: { color: "#94a3b8" }
-            },
-            x: {
-              grid: { display: false },
-              ticks: { color: "#94a3b8" }
-            }
-          },
-          plugins: {
-            legend: { display: false }
-          }
-        },
-      });
-    }
+
 
     // Export to CSV
     async function exportCSV() {
