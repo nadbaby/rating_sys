@@ -11,8 +11,8 @@ const defaultDb = {
   employees: [],
   feedback: [],
   admin: {
-    email: process.env.ADMIN_EMAIL || "admin@example.com",
-    password: process.env.ADMIN_PASSWORD || "admin123"
+    email: process.env.ADMIN_EMAIL || "boss@fine.com",
+    password: process.env.ADMIN_PASSWORD || "boss123"
   }
 };
 
@@ -74,7 +74,7 @@ export const dbHelper = {
   addEmployee(employee) {
     const data = readDb();
     if (!data.employees) data.employees = [];
-    
+
     // Check for duplicate ID
     if (data.employees.some(e => e.employeeId === employee.employeeId)) {
       throw new Error("Employee ID already exists");
@@ -93,12 +93,12 @@ export const dbHelper = {
   deleteEmployee(id) {
     const data = readDb();
     if (!data.employees) return false;
-    
+
     const initialLength = data.employees.length;
     data.employees = data.employees.filter(e => e.employeeId !== id);
-    
+
     // Optional: remove their feedback or keep it? We keep it to preserve historical statistics
-    
+
     if (data.employees.length < initialLength) {
       writeDb(data);
       return true;
