@@ -473,21 +473,21 @@ if (document.getElementById("dashboardSection")) {
       
       if (window.ratingChart) window.ratingChart.destroy();
       window.ratingChart = new Chart(ctx, {
-        type: "line",
+        type: "bar",
         data: {
           labels,
           datasets: [{
             label: "Avg Rating",
             data: values,
             borderColor: "#ea580c",
-            backgroundColor: "rgba(234, 88, 12, 0.15)",
-            fill: true,
-            tension: 0.3,
-            borderWidth: 2,
-            pointBackgroundColor: "#ea580c",
-            pointBorderColor: "#fff",
-            pointHoverBackgroundColor: "#fff",
-            pointHoverBorderColor: "#ea580c"
+            backgroundColor: "rgba(234, 88, 12, 0.7)",
+            hoverBackgroundColor: "#f97316",
+            hoverBorderColor: "#fff",
+            borderWidth: 1.5,
+            borderRadius: 6,
+            borderSkipped: false,
+            barPercentage: 0.6,
+            maxBarThickness: 40
           }],
         },
         options: {
