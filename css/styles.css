@@ -463,6 +463,9 @@ textarea {
 /* Chart */
 .chart-container {
   margin-bottom: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  height: 280px; /* Binds the height to be compact and small */
 }
 
 .chart-container h3 {
@@ -470,6 +473,12 @@ textarea {
   font-weight: 700;
   margin-bottom: 1.2rem;
   color: var(--color-text-secondary);
+}
+
+.chart-container canvas {
+  flex: 1;
+  min-height: 0;
+  width: 100% !important;
 }
 
 /* Recent Comments */
