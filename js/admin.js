@@ -322,6 +322,7 @@ if (document.getElementById("dashboardSection")) {
             </div>
             <div class="comment-text">"${escapeHtml(f.comment)}"</div>
             <div class="comment-meta">
+              <span>By: ${escapeHtml(f.customerName || "Anonymous")}</span>
               <span>Date: ${dateStr}</span>
             </div>
           `;
@@ -459,11 +460,12 @@ if (document.getElementById("dashboardSection")) {
     // Export to CSV
     async function exportCSV() {
       const data = await loadData();
-      let csv = "Counter,EmployeeId,Rating,Comment,CreatedAt\n";
+      let csv = "Counter,EmployeeId,CustomerName,Rating,Comment,CreatedAt\n";
       data.forEach((f) => {
         const row = [
           `"${f.counter || ""}"`,
           `"${f.employeeId || ""}"`,
+          `"${f.customerName || "Anonymous"}"`,
           f.rating,
           `"${(f.comment || "").replace(/"/g, '""')}"`,
           formatDate(f.createdAt),

@@ -132,6 +132,7 @@ export const dbHelper = {
       id: Math.random().toString(36).substr(2, 9),
       employeeId: feedback.employeeId || null,
       counter: feedback.counter || "Unknown Counter",
+      customerName: feedback.customerName || "Anonymous",
       rating: Number(feedback.rating),
       comment: feedback.comment || null,
       createdAt: new Date().toISOString()

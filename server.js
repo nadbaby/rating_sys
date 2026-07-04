@@ -104,13 +104,13 @@ app.get('/api/feedback', (req, res) => {
 
 // Add feedback
 app.post('/api/feedback', (req, res) => {
-  const { employeeId, counter, rating, comment } = req.body;
+  const { employeeId, counter, rating, comment, customerName } = req.body;
   if (rating === undefined) {
     return res.status(400).json({ error: "Rating is required." });
   }
 
   try {
-    const created = dbHelper.addFeedback({ employeeId, counter, rating, comment });
+    const created = dbHelper.addFeedback({ employeeId, counter, rating, comment, customerName });
     res.status(201).json(created);
   } catch (err) {
     res.status(500).json({ error: err.message });

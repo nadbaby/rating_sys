@@ -114,6 +114,8 @@ form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const rating = form.rating.value;
   const comment = form.comment.value.trim();
+  const customerName = form.customerName.value.trim();
+
   if (!rating) {
     alert('Please select a star rating.');
     return;
@@ -123,6 +125,7 @@ form.addEventListener('submit', async (e) => {
     await addDoc(collection(db, 'feedback'), {
       employeeId: currentEmployeeId,
       counter: currentCounterName,
+      customerName: customerName || "Anonymous",
       rating: Number(rating),
       comment: comment || null,
       createdAt: serverTimestamp()
