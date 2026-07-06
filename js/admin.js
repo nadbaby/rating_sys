@@ -1060,7 +1060,7 @@ if (document.getElementById("dashboardSection")) {
         tabBtns.forEach(b => b.classList.remove("active"));
         tabContents.forEach(c => c.classList.remove("active"));
         
-        btn.classList.add("active");
+        document.querySelectorAll(`.tab-btn[data-tab="${targetTab}"]`).forEach(b => b.classList.add("active"));
         const targetContent = document.getElementById(targetTab);
         if (targetContent) targetContent.classList.add("active");
       });
