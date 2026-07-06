@@ -1423,7 +1423,7 @@ if (document.getElementById("dashboardSection")) {
       }
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="no-data">${employees.length === 0 ? "No employees registered yet." : "No matching employees found."}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="no-data">${employees.length === 0 ? "No employees registered yet." : "No matching employees found."}</td></tr>`;
         return;
       }
 
@@ -1470,12 +1470,8 @@ if (document.getElementById("dashboardSection")) {
           <td><span class="emp-id-badge" style="font-family: monospace; font-weight: 600;">${escapeHtml(emp.employeeId)}</span></td>
           <td>${avatarHtml}</td>
           <td>${catBadgeHtml}</td>
-          <td>
-            <div class="emp-rating" style="display: flex; flex-direction: column; gap: 0.15rem;">
-              <span style="font-weight: 600; color: var(--color-text-primary);">${custAvg !== "-" ? `⭐ ${custAvg}` : "-"}</span>
-              <span class="helper-text" style="font-size: 0.75rem; color: var(--color-text-secondary);">${stats.count} reviews</span>
-            </div>
-          </td>
+          <td><span style="font-weight: 600; color: var(--color-text-primary);">${custAvg !== "-" ? `⭐ ${custAvg}` : "-"}</span></td>
+          <td><span style="font-weight: 600; color: var(--color-text-primary);">${stats.count}</span></td>
           <td><span class="kpi-badge">${kpiAvg}</span></td>
           <td><span style="font-weight: 600; color: var(--color-text-primary);">${pickedItems}</span></td>
           <td><span style="color: ${penalty > 0 ? '#f87171' : 'var(--color-text-secondary)'}; font-weight: 600;">${penalty > 0 ? `-${penalty.toFixed(1)}` : '0.0'}</span></td>
