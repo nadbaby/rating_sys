@@ -1423,7 +1423,7 @@ if (document.getElementById("dashboardSection")) {
       }
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="no-data">${employees.length === 0 ? "No employees registered yet." : "No matching employees found."}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="no-data">${employees.length === 0 ? "No employees registered yet." : "No matching employees found."}</td></tr>`;
         return;
       }
 
@@ -1454,46 +1454,45 @@ if (document.getElementById("dashboardSection")) {
         // Generate Avatar Initials
         const initials = emp.name ? emp.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() : "EE";
         const avatarHtml = `
-          <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <div style="width: 36px; height: 36px; border-radius: 50%; background: ${catBadgeColor}; border: 1px solid ${catColor}40; color: ${catColor}; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">
+          <div class="emp-cell-avatar">
+            <div class="emp-avatar-circle" style="background: ${catBadgeColor}; border-color: ${catColor}40; color: ${catColor};">
               ${initials}
             </div>
-            <div>
-              <div class="emp-name clickable-name" data-id="${emp.employeeId}" style="font-weight: 600; cursor: pointer; color: var(--color-text-primary); transition: color 0.2s;">${escapeHtml(emp.name)}</div>
-              <small style="color: var(--color-text-secondary); font-size: 0.75rem;">ID: ${escapeHtml(emp.employeeId)}</small>
+            <div class="emp-cell-info">
+              <div class="emp-name clickable-name" data-id="${emp.employeeId}">${escapeHtml(emp.name)}</div>
+              <small class="emp-cell-id">ID: ${escapeHtml(emp.employeeId)}</small>
             </div>
           </div>
         `;
 
+        const penaltyHtml = penalty > 0
+          ? `<span style="color: #f87171; font-weight: 600;">-${penalty.toFixed(1)}</span>`
+          : `<span style="color: var(--color-text-secondary);">0.0</span>`;
+
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td><span class="emp-id-badge" style="font-family: monospace; font-weight: 600;">${escapeHtml(emp.employeeId)}</span></td>
           <td>${avatarHtml}</td>
           <td>${catBadgeHtml}</td>
-          <td><span style="font-weight: 600; color: var(--color-text-primary);">${custAvg !== "-" ? `⭐ ${custAvg}` : "-"}</span></td>
-          <td><span style="font-weight: 600; color: var(--color-text-primary);">${stats.count}</span></td>
-          <td><span class="kpi-badge">${kpiAvg}</span></td>
-          <td><span style="font-weight: 600; color: var(--color-text-primary);">${pickedItems}</span></td>
-          <td><span style="color: ${penalty > 0 ? '#f87171' : 'var(--color-text-secondary)'}; font-weight: 600;">${penalty > 0 ? `-${penalty.toFixed(1)}` : '0.0'}</span></td>
-          <td>
-            <button class="btn-secondary btn-copy" data-link="${link}" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 0.25rem;">
-              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 0.85rem; height: 0.85rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
-              <span>Copy</span>
+          <td class="emp-td-center"><span style="font-weight: 600;">${custAvg !== "-" ? `⭐ ${custAvg}` : "—"}</span></td>
+          <td class="emp-td-center"><span style="font-weight: 600;">${stats.count}</span></td>
+          <td class="emp-td-center"><span class="kpi-badge">${kpiAvg}</span></td>
+          <td class="emp-td-center"><span style="font-weight: 600; color: var(--color-text-secondary);">${pickedItems}</span></td>
+          <td class="emp-td-center">${penaltyHtml}</td>
+          <td class="emp-td-center">
+            <button class="emp-icon-btn btn-copy" data-link="${link}" title="Copy feedback link">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
             </button>
           </td>
           <td>
-            <div style="display: flex; gap: 0.35rem;">
-              <button class="btn-secondary btn-kpi" data-id="${emp.employeeId}" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; border-radius: 6px;" title="Manage KPIs">
-                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 0.85rem; height: 0.85rem; display: inline-block; vertical-align: middle;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
-                <span>KPIs</span>
+            <div class="emp-actions-group">
+              <button class="emp-icon-btn btn-kpi" data-id="${emp.employeeId}" title="Manage KPIs">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
               </button>
-              <button class="btn-secondary btn-report" data-id="${emp.employeeId}" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; border-radius: 6px;" title="View Report">
-                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 0.85rem; height: 0.85rem; display: inline-block; vertical-align: middle;"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                <span>Report</span>
+              <button class="emp-icon-btn btn-report" data-id="${emp.employeeId}" title="View Report Card">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
               </button>
-              <button class="btn-danger btn-delete" data-id="${emp.employeeId}" data-name="${emp.name}" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; border-radius: 6px;" title="Delete Employee">
-                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 0.85rem; height: 0.85rem; display: inline-block; vertical-align: middle;"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                <span>Delete</span>
+              <button class="emp-icon-btn emp-icon-btn--danger btn-delete" data-id="${emp.employeeId}" data-name="${emp.name}" title="Delete Employee">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
               </button>
             </div>
           </td>

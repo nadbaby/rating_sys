@@ -222,24 +222,34 @@
               </select>
             </div>
             <div class="table-responsive">
-              <table class="custom-table">
+              <table class="custom-table" id="employeeTable">
+                <colgroup>
+                  <col style="width: 180px;"> <!-- Employee -->
+                  <col style="width: 100px;"> <!-- Category -->
+                  <col style="width: 100px;"> <!-- Cust Avg -->
+                  <col style="width: 100px;"> <!-- Reviews -->
+                  <col style="width: 90px;">  <!-- KPI Avg -->
+                  <col style="width: 90px;">  <!-- KPI Items -->
+                  <col style="width: 80px;">  <!-- Penalty -->
+                  <col style="width: 80px;">  <!-- Link -->
+                  <col style="width: 120px;"> <!-- Actions -->
+                </colgroup>
                 <thead>
                   <tr>
-                    <th>ID</th>
-                    <th>Employee Details</th>
+                    <th>Employee</th>
                     <th>Category</th>
-                    <th>Customer Avg</th>
-                    <th>Reviews Taken</th>
+                    <th>Cust. Avg</th>
+                    <th>Reviews</th>
                     <th>KPI Avg</th>
-                    <th>KPI Items</th>
+                    <th>Items</th>
                     <th>Penalty</th>
-                    <th>Feedback Link</th>
+                    <th>Link</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody id="employeeTableBody">
                   <tr>
-                    <td colspan="10" class="no-data">Loading employees...</td>
+                    <td colspan="9" class="no-data">Loading employees...</td>
                   </tr>
                 </tbody>
               </table>

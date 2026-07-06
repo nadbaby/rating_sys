@@ -656,113 +656,151 @@ textarea {
   border-radius: 12px;
   border: 0.5px solid var(--color-border);
   background: var(--color-bg-card);
-  margin-bottom: 1.5rem;
 }
 
 .custom-table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  table-layout: auto;
 }
 
 .custom-table th {
-  padding: 0.75rem 0.5rem;
-  font-size: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--color-text-secondary);
   border-bottom: 0.5px solid var(--color-border);
-  letter-spacing: 0.03em;
   white-space: nowrap;
+  background: var(--color-bg-card);
 }
 
 .custom-table td {
-  padding: 0.75rem 0.5rem;
+  padding: 0.7rem 0.75rem;
   font-size: 0.85rem;
   border-bottom: 0.5px solid var(--color-border);
   vertical-align: middle;
   white-space: nowrap;
 }
 
+.custom-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
 .custom-table tbody tr:hover {
-  background: rgba(120, 120, 128, 0.04);
+  background: rgba(120, 120, 128, 0.05);
 }
 
-/* Specific alignments and custom widths */
-.custom-table th:first-child,
-.custom-table td:first-child {
-  padding-left: 1rem;
-}
-
-.custom-table th:last-child,
-.custom-table td:last-child {
-  padding-right: 1rem;
-}
-
-/* Align values columns to center for cleaner scanning */
-.custom-table th:nth-child(4),
-.custom-table td:nth-child(4),
-.custom-table th:nth-child(5),
-.custom-table td:nth-child(5),
-.custom-table th:nth-child(6),
-.custom-table td:nth-child(6),
-.custom-table th:nth-child(7),
-.custom-table td:nth-child(7),
-.custom-table th:nth-child(8),
-.custom-table td:nth-child(8) {
+/* Centered data columns */
+.emp-td-center {
   text-align: center;
 }
 
-/* Make action buttons inline, compact and clean iOS styles */
-.custom-table td .btn-secondary,
-.custom-table td .btn-danger,
-.custom-table td .btn-primary {
-  padding: 0.35rem 0.6rem !important;
-  font-size: 0.75rem !important;
-  height: 28px;
-  border-radius: 6px;
+/* ── Employee avatar cell ── */
+.emp-cell-avatar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 160px;
+}
+
+.emp-avatar-circle {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+.emp-cell-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+}
+
+.emp-cell-info .emp-name {
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  transition: color var(--transition-fast);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.emp-cell-info .emp-name:hover {
+  color: var(--color-primary);
+}
+
+.emp-cell-id {
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+  font-family: monospace;
+}
+
+/* ── Icon-only action buttons ── */
+.emp-icon-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  font-weight: 600;
-  width: auto;
-  box-shadow: none;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(120, 120, 128, 0.1);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+  flex-shrink: 0;
 }
 
-.custom-table td .btn-danger {
-  background: rgba(255, 69, 58, 0.1);
-  color: var(--color-warning);
+.emp-icon-btn svg {
+  width: 0.9rem;
+  height: 0.9rem;
 }
 
-.custom-table td .btn-danger:hover {
+.emp-icon-btn:hover {
+  background: var(--color-primary);
+  color: #ffffff;
+  transform: scale(1.08);
+}
+
+.emp-icon-btn:active {
+  transform: scale(0.95);
+}
+
+.emp-icon-btn--danger:hover {
   background: var(--color-warning);
   color: #ffffff;
 }
 
-.custom-table td .btn-copy {
-  background: rgba(10, 132, 255, 0.1);
-  color: var(--color-primary);
+.emp-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
-.custom-table td .btn-copy:hover {
-  background: var(--color-primary);
-  color: #ffffff;
-}
-
+/* ── ID & category badges ── */
 .emp-id-badge {
-  background: rgba(120, 120, 128, 0.12);
-  padding: 0.15rem 0.4rem;
+  display: inline-block;
+  background: rgba(120, 120, 128, 0.1);
+  padding: 0.15rem 0.45rem;
   border-radius: 6px;
   font-family: monospace;
   font-size: 0.75rem;
   color: var(--color-text-primary);
   border: 0.5px solid var(--color-border);
+  white-space: nowrap;
 }
 
-.emp-name {
-  font-weight: 600;
-}
+.emp-name { font-weight: 600; }
 
 .emp-rating {
   display: flex;
@@ -773,33 +811,15 @@ textarea {
 
 .emp-rating-stars {
   color: #ff9f0a;
-  /* iOS Orange */
   font-size: 0.8rem;
-}
-
-.emp-link-container {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.emp-link-input {
-  background: rgba(120, 120, 128, 0.06) !important;
-  font-family: monospace !important;
-  font-size: 0.7rem !important;
-  padding: 0.25rem 0.4rem !important;
-  max-width: 150px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow: hidden;
-  border: 0.5px solid var(--color-border);
 }
 
 .no-data {
   text-align: center;
   color: var(--color-text-secondary);
-  padding: 2rem !important;
+  padding: 2.5rem !important;
   font-style: italic;
+  white-space: normal;
 }
 
 /* ==================== Feedback Client Form ==================== */
