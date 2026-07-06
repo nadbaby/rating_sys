@@ -1385,17 +1385,18 @@ textarea {
 }
 
 .review-comment-item {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--color-bg-card);
   border: 1px solid var(--color-border);
   padding: 1rem;
   border-radius: 8px;
   margin-bottom: 0.75rem;
-  transition: transform var(--transition-fast), background var(--transition-fast);
+  transition: transform var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .review-comment-item:hover {
   transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--color-bg-panel);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .review-comment-header {
@@ -1521,6 +1522,12 @@ html[data-theme="light"] .comment-item {
 
 html[data-theme="light"] .drawer {
   background: #ffffff;
+}
+
+html[data-theme="light"] .drawer-content {
+  background: rgba(255, 255, 255, 0.98);
+  border-left: 1px solid var(--color-border);
+  box-shadow: -10px 0 30px rgba(15, 23, 42, 0.05);
 }
 
 html[data-theme="light"] .modal-content {

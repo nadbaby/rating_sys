@@ -142,7 +142,7 @@ if (document.getElementById("dashboardSection")) {
         kpiRowsHtml += `
           <tr style="border-bottom: 1px solid var(--color-border);">
             <td style="padding: 0.65rem 0; color: var(--color-text-primary); font-weight: 500;">${name}</td>
-            <td style="padding: 0.65rem 0; text-align: right; font-weight: 700; color: #fb923c;">
+            <td style="padding: 0.65rem 0; text-align: right; font-weight: 700; color: var(--color-primary);">
               <span style="font-size: 0.8rem; color: var(--color-text-secondary); margin-right: 0.5rem; font-weight: normal;">${stars}</span>
               ${numVal.toFixed(1)}
             </td>
@@ -218,15 +218,15 @@ if (document.getElementById("dashboardSection")) {
 
       if (improvements.length > 0) {
         improvementHtmlContent += `
-          <p style="margin-bottom: 0.35rem; font-weight: 600; color: #fb923c;">System Identified Areas of Development:</p>
-          <ul style="margin-left: 1.25rem; padding-left: 0; margin-top: 0; margin-bottom: 0;">
+          <p style="margin-bottom: 0.35rem; font-weight: 600; color: var(--color-primary);">System Identified Areas of Development:</p>
+          <ul style="margin-left: 1.25rem; padding-left: 0; margin-top: 0; margin-bottom: 0; color: var(--color-text-secondary);">
             ${improvements.join("")}
           </ul>
         `;
       } else if (!emp.improvements) {
-        improvementHtmlContent += `<p style="color: #4ade80; font-weight: 600; display: flex; align-items: center; gap: 0.25rem; margin: 0;">✨ Excellent performance! All evaluated metrics met or exceeded target standards (8.0+).</p>`;
+        improvementHtmlContent += `<p style="color: #22c55e; font-weight: 600; display: flex; align-items: center; gap: 0.25rem; margin: 0;">✨ Excellent performance! All evaluated metrics met or exceeded target standards (8.0+).</p>`;
       } else {
-        improvementHtmlContent += `<p style="color: #4ade80; font-weight: 600; display: flex; align-items: center; gap: 0.25rem; margin: 0;">✨ No additional low scores identified. General performance standards are met.</p>`;
+        improvementHtmlContent += `<p style="color: #22c55e; font-weight: 600; display: flex; align-items: center; gap: 0.25rem; margin: 0;">✨ No additional low scores identified. General performance standards are met.</p>`;
       }
 
       let statusClass = "status-good";
@@ -235,13 +235,13 @@ if (document.getElementById("dashboardSection")) {
       else if (performanceStatus === "Needs Improvement" || performanceStatus === "Needs Imp.") statusClass = "status-warning";
 
       return `
-        <div class="report-card-container" style="padding: 1.5rem; background: rgba(255,255,255,0.01); border: 1px solid var(--color-border); border-radius: 12px; color: var(--color-text-primary); margin-bottom: 1.5rem;">
+        <div class="report-card-container" style="padding: 1.5rem; background: transparent; border: 1px solid var(--color-border); border-radius: 12px; color: var(--color-text-primary); margin-bottom: 1.5rem;">
           <div style="text-align: center; margin-bottom: 1.5rem; border-bottom: 2px dashed var(--color-border); padding-bottom: 1rem;">
             <h1 style="font-size: 1.5rem; color: var(--color-primary); font-weight: 800; letter-spacing: 1px; margin-bottom: 0.25rem;">FINE BEARING & OIL SEAL STORE</h1>
             <p style="font-size: 0.85rem; color: var(--color-text-secondary); text-transform: uppercase;">Employee Performance Report Card</p>
           </div>
 
-          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem; background: rgba(255, 255, 255, 0.02); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border);">
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem; background: var(--color-bg-card); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border);">
             <div>
               <div style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase;">Employee Name</div>
               <div id="rcEmpName" style="font-size: 1.1rem; font-weight: 700; color: var(--color-text-primary); margin-top: 0.25rem;">${escapeHtml(emp.name)}</div>
@@ -261,15 +261,15 @@ if (document.getElementById("dashboardSection")) {
           </div>
 
           <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; text-align: center;">
-            <div style="background: rgba(255, 255, 255, 0.03); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border);">
+            <div style="background: var(--color-bg-card); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border);">
               <div style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase; margin-bottom: 0.25rem;">Final Score</div>
-              <div id="rcFinalScore" style="font-size: 1.8rem; font-weight: 800; color: #fb923c;">${Number(finalScore).toFixed(2)} / 10</div>
+              <div id="rcFinalScore" style="font-size: 1.8rem; font-weight: 800; color: var(--color-primary);">${Number(finalScore).toFixed(2)} / 10</div>
             </div>
-            <div style="background: rgba(255, 255, 255, 0.03); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border);">
+            <div style="background: var(--color-bg-card); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border);">
               <div style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase; margin-bottom: 0.25rem;">Leaderboard Rank</div>
               <div id="rcRank" style="font-size: 1.8rem; font-weight: 800; color: var(--color-text-primary);">#${rank}</div>
             </div>
-            <div style="background: rgba(255, 255, 255, 0.03); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border);">
+            <div style="background: var(--color-bg-card); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border);">
               <div style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase; margin-bottom: 0.25rem;">Performance Status</div>
               <div style="margin-top: 0.25rem;"><span class="performance-status ${statusClass}" style="font-size: 0.9rem; padding: 0.35rem 0.75rem;">${performanceStatus}</span></div>
             </div>
@@ -291,28 +291,28 @@ if (document.getElementById("dashboardSection")) {
           </div>
 
           <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 2rem;">
-            <div style="background: rgba(248, 113, 113, 0.03); padding: 1rem; border-radius: 8px; border: 1px solid rgba(248, 113, 113, 0.15);">
-              <h4 style="font-size: 0.85rem; text-transform: uppercase; color: #f87171; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.25rem;">
+            <div style="background: rgba(239, 68, 68, 0.06); padding: 1rem; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.15);">
+              <h4 style="font-size: 0.85rem; text-transform: uppercase; color: var(--color-warning); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.25rem;">
                 ⚠️ Deductions & Penalties
               </h4>
               <div style="font-size: 0.85rem; color: var(--color-text-primary); margin-bottom: 0.25rem;">
-                Points Deducted: <strong style="color: #f87171;">${Number(penalty).toFixed(1)}</strong>
+                Points Deducted: <strong style="color: var(--color-warning);">${Number(penalty).toFixed(1)}</strong>
               </div>
               <p style="font-size: 0.8rem; color: var(--color-text-secondary); font-style: italic;">${escapeHtml(penaltyComments)}</p>
             </div>
             
-            <div style="background: rgba(34, 211, 238, 0.03); padding: 1rem; border-radius: 8px; border: 1px solid rgba(34, 211, 238, 0.15);">
-              <h4 style="font-size: 0.85rem; text-transform: uppercase; color: #22d3ee; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.25rem;">
+            <div style="background: rgba(6, 182, 212, 0.08); padding: 1rem; border-radius: 8px; border: 1px solid rgba(6, 182, 212, 0.15);">
+              <h4 style="font-size: 0.85rem; text-transform: uppercase; color: var(--color-accent); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.25rem;">
                 👤 Customer Satisfaction
               </h4>
               <div style="font-size: 0.85rem; color: var(--color-text-primary); margin-bottom: 0.25rem;">
-                Average Rating: <strong style="color: #22d3ee;">${Number(custAvg).toFixed(2)} / 5.0</strong>
+                Average Rating: <strong style="color: var(--color-accent);">${Number(custAvg).toFixed(2)} / 5.0</strong>
               </div>
               <p style="font-size: 0.8rem; color: var(--color-text-secondary);">${statsCount} reviews submitted by customers.</p>
             </div>
           </div>
 
-          <div style="background: rgba(234, 88, 12, 0.03); padding: 1.25rem; border-radius: 8px; border: 1px solid rgba(234, 88, 12, 0.15); margin-bottom: 2rem;">
+          <div style="background: rgba(234, 88, 12, 0.08); padding: 1.25rem; border-radius: 8px; border: 1px solid rgba(234, 88, 12, 0.15); margin-bottom: 2rem;">
             <h4 style="font-size: 0.85rem; text-transform: uppercase; color: var(--color-primary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.25rem; letter-spacing: 0.5px;">
               📈 Areas of Improvement & Feedback
             </h4>
