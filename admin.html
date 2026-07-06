@@ -207,18 +207,32 @@
                 <span>Print All QR Codes</span>
               </button>
             </div>
+            
+            <!-- Search & Filters -->
+            <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap;" class="no-print">
+              <div style="position: relative; flex: 1; min-width: 200px;">
+                <span style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--color-text-secondary); pointer-events: none; font-size: 0.85rem;">🔍</span>
+                <input type="text" id="searchEmployeeInput" placeholder="Search by name or ID..." style="width: 100%; padding: 0.55rem 1.25rem 0.55rem 2.2rem; border-radius: 8px; background: var(--color-bg-card); color: var(--color-text-primary); border: 1px solid var(--color-border); font-size: 0.85rem;" />
+              </div>
+              <select id="filterCategorySelect" style="padding: 0.55rem 1rem; border-radius: 8px; background: var(--color-bg-card); color: var(--color-text-primary); border: 1px solid var(--color-border); font-size: 0.85rem; font-weight: 500;">
+                <option value="all">All Categories</option>
+                <option value="Sales">Sales</option>
+                <option value="Store">Store</option>
+                <option value="Admin">Admin</option>
+              </select>
+            </div>
             <div class="table-responsive">
               <table class="custom-table">
                 <thead>
                   <tr>
                     <th>ID</th>
-                    <th>Name</th>
+                    <th>Employee Details</th>
                     <th>Category</th>
                     <th>Customer Avg</th>
                     <th>KPI Avg</th>
-                    <th>15d Count</th>
+                    <th>KPI Items</th>
                     <th>Penalty</th>
-                    <th>Unique Link</th>
+                    <th>Feedback Link</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
