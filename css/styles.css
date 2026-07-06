@@ -906,9 +906,10 @@ textarea {
 
 .star-rating label {
   font-size: inherit;
-  color: rgba(120, 120, 128, 0.2);
+  color: rgba(180, 180, 180, 0.45);
   cursor: pointer;
-  transition: color 0.15s ease, transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.15);
+  text-shadow: 0 0 6px rgba(180, 180, 180, 0.15);
+  transition: color 0.15s ease, transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.15), text-shadow 0.15s ease;
 }
 
 .star-rating label:hover {
@@ -919,7 +920,7 @@ textarea {
 .star-rating label:hover,
 .star-rating label:hover~label {
   color: #ff9f0a;
-  /* iOS gold/orange */
+  text-shadow: 0 0 12px rgba(255, 159, 10, 0.6), 0 0 24px rgba(255, 159, 10, 0.25);
 }
 
 .rating-label-desc {
