@@ -6,6 +6,7 @@
   <title>Admin Dashboard - Feedback Portal</title>
   <meta name="description" content="Admin dashboard to monitor customer feedback." />
   <link rel="stylesheet" href="css/styles.css" />
+  <script src="js/theme.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -19,14 +20,22 @@
     <div class="logo">
       <span class="logo-accent">Feedback</span>Portal
     </div>
-    <button id="logoutBtn" class="logout-btn">
-      <svg class="logout-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-      Sign Out
-    </button>
+    <div style="display: flex; gap: 0.75rem; align-items: center;">
+      <button id="themeToggleBtn">
+        Light Mode
+      </button>
+      <button id="logoutBtn" class="logout-btn">
+        <svg class="logout-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+        Sign Out
+      </button>
+    </div>
   </header>
 
   <main class="container">
     <section class="admin-dashboard glass-panel" id="dashboardSection">
+      <!-- Auto Report Notification Reminder -->
+      <div id="autoReportReminder" style="display: none;"></div>
+
       <div class="dashboard-header">
         <h1>Dashboard</h1>
         <!-- Navigation Tabs -->
@@ -48,17 +57,41 @@
 
       <!-- ================= Tab 1: Analytics Overview ================= -->
       <div id="statsTab" class="tab-content active">
-        <div class="filter-section card-dark">
-          <div class="filter-group">
-            <label for="dateFrom">From:</label>
-            <input type="date" id="dateFrom" />
+        <div class="filter-section card-dark" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
+          <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem;">
+            <div class="filter-group">
+              <label for="dateFrom">From:</label>
+              <input type="date" id="dateFrom" />
+            </div>
+            <div class="filter-group">
+              <label for="dateTo">To:</label>
+              <input type="date" id="dateTo" />
+            </div>
+            <div class="filter-group">
+              <label for="cycleSelect">Review Cycle:</label>
+              <select id="cycleSelect" style="padding: 0.5rem 1rem; border-radius: 8px; background: var(--color-bg-card); color: var(--color-text-primary); border: 1px solid var(--color-border); font-size: 0.85rem; font-weight: 500;">
+                <option value="custom">Custom Range</option>
+                <option value="current-15" selected>Current 15 Days</option>
+                <option value="prev-15">Previous 15 Days</option>
+                <option value="current-month">Current Month</option>
+                <option value="prev-month">Previous Month</option>
+              </select>
+            </div>
+            <button id="applyFilter" class="btn-primary">Apply Filters</button>
           </div>
-          <div class="filter-group">
-            <label for="dateTo">To:</label>
-            <input type="date" id="dateTo" />
+          <div class="filter-actions-group" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button id="btnExportCSV" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 0.35rem;">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 1rem; height: 1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+              <span>Export CSV</span>
+            </button>
+            <button id="btnPrintAllReports" class="btn-primary" style="display: inline-flex; align-items: center; gap: 0.35rem;">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 1rem; height: 1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+              <span>Print All Reports</span>
+            </button>
           </div>
-          <button id="applyFilter" class="btn-primary">Apply Filters</button>
         </div>
+
+        <div id="attentionAlertWidget" class="attention-widget no-print" style="display: none; margin-top: 1.5rem; margin-bottom: 1.5rem;"></div>
 
         <div class="stats-grid">
           <div class="stat-card glass-card">
@@ -80,6 +113,56 @@
           <div class="stat-card glass-card">
             <div class="label">Needs Improvement</div>
             <div class="value value-warning" id="worstCounter">-</div>
+          </div>
+        </div>
+
+        <!-- Performance Analytics Charts Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;" class="no-print">
+          <!-- Comparison Chart -->
+          <div class="analytics-chart-card glass-card" style="padding: 1.5rem; margin-bottom: 0;">
+            <h2 style="margin-bottom: 1.25rem; font-size: 1.15rem; color: var(--color-text-primary); display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 1.25rem; height: 1.25rem; color: var(--color-primary);"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+              Employee Comparison (Customer vs. KPI)
+            </h2>
+            <div style="position: relative; height: 320px; width: 100%;">
+              <canvas id="performanceChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Trend Chart -->
+          <div class="analytics-chart-card glass-card" style="padding: 1.5rem; margin-bottom: 0;">
+            <h2 style="margin-bottom: 1.25rem; font-size: 1.15rem; color: var(--color-text-primary); display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 1.25rem; height: 1.25rem; color: #22d3ee;"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+              Daily Customer Rating Trend
+            </h2>
+            <div style="position: relative; height: 320px; width: 100%;">
+              <canvas id="trendChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sentiment & Feedback Themes Summary -->
+        <div class="sentiment-section glass-card no-print" style="margin-bottom: 2rem; padding: 1.5rem;">
+          <h2 style="margin-bottom: 1.25rem; font-size: 1.25rem; color: var(--color-text-primary); display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 1.25rem; height: 1.25rem; color: #c084fc;"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+            Customer Review Sentiment & Feedback Themes
+          </h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+            <div>
+              <h3 style="font-size: 0.9rem; color: var(--color-text-secondary); margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Sentiment Distribution</h3>
+              <div style="display: flex; height: 24px; border-radius: 12px; overflow: hidden; background: rgba(255, 255, 255, 0.05); margin-bottom: 1rem;" id="sentimentBar">
+                <!-- Dynamic sentiment percentages -->
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.85rem;" id="sentimentLegend">
+                <!-- Legend with counts -->
+              </div>
+            </div>
+            <div>
+              <h3 style="font-size: 0.9rem; color: var(--color-text-secondary); margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Common Customer Themes</h3>
+              <div id="wordCloudTags" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                <!-- Dynamic word tags -->
+              </div>
+            </div>
           </div>
         </div>
 
@@ -107,28 +190,41 @@
                 <label for="newEmpName">Full Name</label>
                 <input type="text" id="newEmpName" placeholder="e.g. John Doe" required />
               </div>
+              <div class="form-group">
+                <label for="newEmpCategory">Category</label>
+                <input type="text" id="newEmpCategory" placeholder="e.g. Sales, Store, Admin" required />
+              </div>
               <button type="submit" class="btn-primary">Register Employee</button>
             </form>
           </div>
 
           <!-- Employee List Card -->
           <div class="employee-list-card glass-card">
-            <h2>Employees</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+              <h2 style="margin: 0;">Employees</h2>
+              <button id="btnPrintAllQRCodes" class="btn-primary" style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.85rem; padding: 0.5rem 0.85rem;">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 1rem; height: 1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-16v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                <span>Print All QR Codes</span>
+              </button>
+            </div>
             <div class="table-responsive">
               <table class="custom-table">
                 <thead>
                   <tr>
                     <th>ID</th>
                     <th>Name</th>
-                    <th>Average Rating</th>
-                    <th>Reviews</th>
+                    <th>Category</th>
+                    <th>Customer Avg</th>
+                    <th>KPI Avg</th>
+                    <th>15d Count</th>
+                    <th>Penalty</th>
                     <th>Unique Link</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody id="employeeTableBody">
                   <tr>
-                    <td colspan="6" class="no-data">Loading employees...</td>
+                    <td colspan="9" class="no-data">Loading employees...</td>
                   </tr>
                 </tbody>
               </table>
@@ -151,14 +247,18 @@
                   <th>Rank</th>
                   <th>Employee</th>
                   <th>ID</th>
-                  <th>Average Rating</th>
-                  <th>Ratings Count</th>
-                  <th>Performance</th>
+                  <th>Category</th>
+                  <th>Customer Avg</th>
+                  <th>KPI Average</th>
+                  <th>Penalty</th>
+                  <th>Final Score</th>
+                  <th>Performance Progress</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="leaderboardTableBody">
                 <tr>
-                  <td colspan="6" class="no-data">Loading rankings...</td>
+                  <td colspan="10" class="no-data">Loading rankings...</td>
                 </tr>
               </tbody>
             </table>
@@ -166,8 +266,525 @@
         </div>
       </div>
 
-    </section>
-  </main>
+  <!-- KPI & Penalty Edit Drawer -->
+  <div id="kpiModal" class="drawer-overlay">
+    <div class="drawer-content glass-panel">
+      <div class="drawer-header">
+        <h2>KPI & Penalty Evaluation</h2>
+        <button class="close-btn" id="closeKpiModal">&times;</button>
+      </div>
+      <form id="kpiForm">
+        <input type="hidden" id="kpiEmployeeId" />
+        <div class="drawer-body-scroll">
+          
+          <!-- Employee Name -->
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label for="kpiEmployeeName">Employee Name</label>
+            <input type="text" id="kpiEmployeeName" required style="font-weight: 600;" />
+          </div>
+
+          <!-- Employee Category -->
+          <div class="form-group" style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--color-border); padding-bottom: 1.25rem;">
+            <label for="kpiEmployeeCategory">Category</label>
+            <input type="text" id="kpiEmployeeCategory" required style="font-weight: 600;" placeholder="e.g. Sales, Store, Admin" />
+          </div>
+          
+          <!-- 1. Discipline -->
+          <div class="form-group kpi-selection-group">
+            <label>Discipline: <span class="selected-val" id="valDiscipline">10</span></label>
+            <input type="hidden" id="kpiDiscipline" value="10" />
+            <div class="btn-group-kpi" data-target="kpiDiscipline" data-val-lbl="valDiscipline">
+              <button type="button" data-val="1">1</button>
+              <button type="button" data-val="2">2</button>
+              <button type="button" data-val="3">3</button>
+              <button type="button" data-val="4">4</button>
+              <button type="button" data-val="5">5</button>
+              <button type="button" data-val="6">6</button>
+              <button type="button" data-val="7">7</button>
+              <button type="button" data-val="8">8</button>
+              <button type="button" data-val="9">9</button>
+              <button type="button" data-val="10" class="active">10</button>
+            </div>
+          </div>
+
+          <!-- 2. Attendance -->
+          <div class="form-group kpi-selection-group">
+            <label>Attendance: <span class="selected-val" id="valAttendance">10</span></label>
+            <input type="hidden" id="kpiAttendance" value="10" />
+            <div class="btn-group-kpi" data-target="kpiAttendance" data-val-lbl="valAttendance">
+              <button type="button" data-val="1">1</button>
+              <button type="button" data-val="2">2</button>
+              <button type="button" data-val="3">3</button>
+              <button type="button" data-val="4">4</button>
+              <button type="button" data-val="5">5</button>
+              <button type="button" data-val="6">6</button>
+              <button type="button" data-val="7">7</button>
+              <button type="button" data-val="8">8</button>
+              <button type="button" data-val="9">9</button>
+              <button type="button" data-val="10" class="active">10</button>
+            </div>
+          </div>
+
+          <!-- Category wrappers -->
+          
+          <!-- SALES SPECIFIC FIELDS -->
+          <div id="kpiSalesFields" class="category-kpi-fields">
+            <!-- 3. Customer Handling -->
+            <div class="form-group kpi-selection-group">
+              <label>Customer Handling: <span class="selected-val" id="valCustomerHandling">10</span></label>
+              <input type="hidden" id="kpiCustomerHandling" value="10" />
+              <div class="btn-group-kpi" data-target="kpiCustomerHandling" data-val-lbl="valCustomerHandling">
+                <button type="button" data-val="1">1</button>
+                <button type="button" data-val="2">2</button>
+                <button type="button" data-val="3">3</button>
+                <button type="button" data-val="4">4</button>
+                <button type="button" data-val="5">5</button>
+                <button type="button" data-val="6">6</button>
+                <button type="button" data-val="7">7</button>
+                <button type="button" data-val="8">8</button>
+                <button type="button" data-val="9">9</button>
+                <button type="button" data-val="10" class="active">10</button>
+              </div>
+            </div>
+
+            <!-- 4. Billing & Quotation Accuracy -->
+            <div class="form-group kpi-selection-group">
+              <label>Billing & Quotation Accuracy: <span class="selected-val" id="valBillingAccuracy">10</span></label>
+              <input type="hidden" id="kpiBillingAccuracy" value="10" />
+              <div class="btn-group-kpi" data-target="kpiBillingAccuracy" data-val-lbl="valBillingAccuracy">
+                <button type="button" data-val="1">1</button>
+                <button type="button" data-val="2">2</button>
+                <button type="button" data-val="3">3</button>
+                <button type="button" data-val="4">4</button>
+                <button type="button" data-val="5">5</button>
+                <button type="button" data-val="6">6</button>
+                <button type="button" data-val="7">7</button>
+                <button type="button" data-val="8">8</button>
+                <button type="button" data-val="9">9</button>
+                <button type="button" data-val="10" class="active">10</button>
+              </div>
+            </div>
+
+            <!-- 5. Independent Handling -->
+            <div class="form-group kpi-selection-group">
+              <label>Independent Handling: <span class="selected-val" id="valIndependentHandling">10</span></label>
+              <input type="hidden" id="kpiIndependentHandling" value="10" />
+              <div class="btn-group-kpi" data-target="kpiIndependentHandling" data-val-lbl="valIndependentHandling">
+                <button type="button" data-val="1">1</button>
+                <button type="button" data-val="2">2</button>
+                <button type="button" data-val="3">3</button>
+                <button type="button" data-val="4">4</button>
+                <button type="button" data-val="5">5</button>
+                <button type="button" data-val="6">6</button>
+                <button type="button" data-val="7">7</button>
+                <button type="button" data-val="8">8</button>
+                <button type="button" data-val="9">9</button>
+                <button type="button" data-val="10" class="active">10</button>
+              </div>
+            </div>
+
+            <!-- 6. Requisition/Quotation Follow up Report -->
+            <div class="form-group kpi-selection-group">
+              <label>Follow-up Report: <span class="selected-val" id="valFollowUp">10</span></label>
+              <input type="hidden" id="kpiFollowUp" value="10" />
+              <div class="btn-group-kpi" data-target="kpiFollowUp" data-val-lbl="valFollowUp">
+                <button type="button" data-val="1">1</button>
+                <button type="button" data-val="2">2</button>
+                <button type="button" data-val="3">3</button>
+                <button type="button" data-val="4">4</button>
+                <button type="button" data-val="5">5</button>
+                <button type="button" data-val="6">6</button>
+                <button type="button" data-val="7">7</button>
+                <button type="button" data-val="8">8</button>
+                <button type="button" data-val="9">9</button>
+                <button type="button" data-val="10" class="active">10</button>
+              </div>
+            </div>
+
+            <!-- 7. Customer Satisfaction -->
+            <div class="form-group kpi-selection-group">
+              <label>Customer Satisfaction: <span class="selected-val" id="valCustSatisfaction">10</span></label>
+              <input type="hidden" id="kpiCustSatisfaction" value="10" />
+              <div class="btn-group-kpi" data-target="kpiCustSatisfaction" data-val-lbl="valCustSatisfaction">
+                <button type="button" data-val="1">1</button>
+                <button type="button" data-val="2">2</button>
+                <button type="button" data-val="3">3</button>
+                <button type="button" data-val="4">4</button>
+                <button type="button" data-val="5">5</button>
+                <button type="button" data-val="6">6</button>
+                <button type="button" data-val="7">7</button>
+                <button type="button" data-val="8">8</button>
+                <button type="button" data-val="9">9</button>
+                <button type="button" data-val="10" class="active">10</button>
+              </div>
+            </div>
+
+            <!-- 8. Cleanliness -->
+            <div class="form-group kpi-selection-group">
+              <label>Cleanliness: <span class="selected-val" id="valCleanliness">10</span></label>
+              <input type="hidden" id="kpiCleanliness" value="10" />
+              <div class="btn-group-kpi" data-target="kpiCleanliness" data-val-lbl="valCleanliness">
+                <button type="button" data-val="1">1</button>
+                <button type="button" data-val="2">2</button>
+                <button type="button" data-val="3">3</button>
+                <button type="button" data-val="4">4</button>
+                <button type="button" data-val="5">5</button>
+                <button type="button" data-val="6">6</button>
+                <button type="button" data-val="7">7</button>
+                <button type="button" data-val="8">8</button>
+                <button type="button" data-val="9">9</button>
+                <button type="button" data-val="10" class="active">10</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- STORE/GODOWN SPECIFIC FIELDS -->
+          <div id="kpiStoreFields" class="category-kpi-fields" style="display: none;">
+            <!-- 3. Picking Speed & Accuracy -->
+            <div class="form-group kpi-selection-group">
+              <label>Picking Speed & Accuracy: <span class="selected-val" id="valPickingAccuracy">10</span></label>
+              <input type="hidden" id="kpiPickingAccuracy" value="10" />
+              <div class="btn-group-kpi" data-target="kpiPickingAccuracy" data-val-lbl="valPickingAccuracy">
+                <button type="button" data-val="1">1</button>
+                <button type="button" data-val="2">2</button>
+                <button type="button" data-val="3">3</button>
+                <button type="button" data-val="4">4</button>
+                <button type="button" data-val="5">5</button>
+                <button type="button" data-val="6">6</button>
+                <button type="button" data-val="7">7</button>
+                <button type="button" data-val="8">8</button>
+                <button type="button" data-val="9">9</button>
+                <button type="button" data-val="10" class="active">10</button>
+              </div>
+            </div>
+
+            <!-- 4. Stock Placement & Sorting -->
+            <div class="form-group kpi-selection-group">
+              <label>Stock Placement & Sorting: <span class="selected-val" id="valStockSorting">10</span></label>
+              <input type="hidden" id="kpiStockSorting" value="10" />
+              <div class="btn-group-kpi" data-target="kpiStockSorting" data-val-lbl="valStockSorting">
+                <button type="button" data-val="1">1</button>
+                <button type="button" data-val="2">2</button>
+                <button type="button" data-val="3">3</button>
+                <button type="button" data-val="4">4</button>
+                <button type="button" data-val="5">5</button>
+                <button type="button" data-val="6">6</button>
+                <button type="button" data-val="7">7</button>
+                <button type="button" data-val="8">8</button>
+                <button type="button" data-val="9">9</button>
+                <button type="button" data-val="10" class="active">10</button>
+              </div>
+            </div>
+
+            <!-- 5. Material Security & Safety -->
+            <div class="form-group kpi-selection-group">
+              <label>Material Security & Safety: <span class="selected-val" id="valMaterialSecurity">10</span></label>
+              <input type="hidden" id="kpiMaterialSecurity" value="10" />
+              <div class="btn-group-kpi" data-target="kpiMaterialSecurity" data-val-lbl="valMaterialSecurity">
+                <button type="button" data-val="1">1</button>
+                <button type="button" data-val="2">2</button>
+                <button type="button" data-val="3">3</button>
+                <button type="button" data-val="4">4</button>
+                <button type="button" data-val="5">5</button>
+                <button type="button" data-val="6">6</button>
+                <button type="button" data-val="7">7</button>
+                <button type="button" data-val="8">8</button>
+                <button type="button" data-val="9">9</button>
+                <button type="button" data-val="10" class="active">10</button>
+              </div>
+            </div>
+
+            <!-- 6. Cleanliness & Maintenance -->
+            <div class="form-group kpi-selection-group">
+              <label>Cleanliness & Maintenance: <span class="selected-val" id="valStoreCleanliness">10</span></label>
+              <input type="hidden" id="kpiStoreCleanliness" value="10" />
+              <div class="btn-group-kpi" data-target="kpiStoreCleanliness" data-val-lbl="valStoreCleanliness">
+                <button type="button" data-val="1">1</button>
+                <button type="button" data-val="2">2</button>
+                <button type="button" data-val="3">3</button>
+                <button type="button" data-val="4">4</button>
+                <button type="button" data-val="5">5</button>
+                <button type="button" data-val="6">6</button>
+                <button type="button" data-val="7">7</button>
+                <button type="button" data-val="8">8</button>
+                <button type="button" data-val="9">9</button>
+                <button type="button" data-val="10" class="active">10</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- OFFICE/ADMIN SPECIFIC FIELDS -->
+          <div id="kpiAdminFields" class="category-kpi-fields" style="display: none;">
+            <!-- 3. Billing & Taxation Accuracy -->
+            <div class="form-group kpi-selection-group">
+              <label>Billing & Taxation Accuracy: <span class="selected-val" id="valBillingTaxAccuracy">10</span></label>
+              <input type="hidden" id="kpiBillingTaxAccuracy" value="10" />
+              <div class="btn-group-kpi" data-target="kpiBillingTaxAccuracy" data-val-lbl="valBillingTaxAccuracy">
+                <button type="button" data-val="1">1</button>
+                <button type="button" data-val="2">2</button>
+                <button type="button" data-val="3">3</button>
+                <button type="button" data-val="4">4</button>
+                <button type="button" data-val="5">5</button>
+                <button type="button" data-val="6">6</button>
+                <button type="button" data-val="7">7</button>
+                <button type="button" data-val="8">8</button>
+                <button type="button" data-val="9">9</button>
+                <button type="button" data-val="10" class="active">10</button>
+              </div>
+            </div>
+
+            <!-- 4. Payment Outstanding Follow-up -->
+            <div class="form-group kpi-selection-group">
+              <label>Payment Outstanding Follow-up: <span class="selected-val" id="valPaymentFollowUp">10</span></label>
+              <input type="hidden" id="kpiPaymentFollowUp" value="10" />
+              <div class="btn-group-kpi" data-target="kpiPaymentFollowUp" data-val-lbl="valPaymentFollowUp">
+                <button type="button" data-val="1">1</button>
+                <button type="button" data-val="2">2</button>
+                <button type="button" data-val="3">3</button>
+                <button type="button" data-val="4">4</button>
+                <button type="button" data-val="5">5</button>
+                <button type="button" data-val="6">6</button>
+                <button type="button" data-val="7">7</button>
+                <button type="button" data-val="8">8</button>
+                <button type="button" data-val="9">9</button>
+                <button type="button" data-val="10" class="active">10</button>
+              </div>
+            </div>
+
+            <!-- 5. Filing & Bookkeeping -->
+            <div class="form-group kpi-selection-group">
+              <label>Filing & Bookkeeping: <span class="selected-val" id="valFilingBookkeeping">10</span></label>
+              <input type="hidden" id="kpiFilingBookkeeping" value="10" />
+              <div class="btn-group-kpi" data-target="kpiFilingBookkeeping" data-val-lbl="valFilingBookkeeping">
+                <button type="button" data-val="1">1</button>
+                <button type="button" data-val="2">2</button>
+                <button type="button" data-val="3">3</button>
+                <button type="button" data-val="4">4</button>
+                <button type="button" data-val="5">5</button>
+                <button type="button" data-val="6">6</button>
+                <button type="button" data-val="7">7</button>
+                <button type="button" data-val="8">8</button>
+                <button type="button" data-val="9">9</button>
+                <button type="button" data-val="10" class="active">10</button>
+              </div>
+            </div>
+
+            <!-- 6. Office Decorum & Cleanliness -->
+            <div class="form-group kpi-selection-group">
+              <label>Office Decorum & Cleanliness: <span class="selected-val" id="valOfficeDecorum">10</span></label>
+              <input type="hidden" id="kpiOfficeDecorum" value="10" />
+              <div class="btn-group-kpi" data-target="kpiOfficeDecorum" data-val-lbl="valOfficeDecorum">
+                <button type="button" data-val="1">1</button>
+                <button type="button" data-val="2">2</button>
+                <button type="button" data-val="3">3</button>
+                <button type="button" data-val="4">4</button>
+                <button type="button" data-val="5">5</button>
+                <button type="button" data-val="6">6</button>
+                <button type="button" data-val="7">7</button>
+                <button type="button" data-val="8">8</button>
+                <button type="button" data-val="9">9</button>
+                <button type="button" data-val="10" class="active">10</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 9. 15 Days Total Count Items -->
+          <div class="form-group" style="margin-top: 1rem;">
+            <label id="lblPickedItems" for="kpiPickedItems">15d Count</label>
+            <input type="number" id="kpiPickedItems" min="0" placeholder="e.g. 100" required />
+          </div>
+          
+          <!-- 10. Penalty -->
+          <div class="form-group" style="margin-top: 1rem;">
+            <label for="kpiPenalty">Penalty (Points Deducted)</label>
+            <input type="number" id="kpiPenalty" min="0" step="0.1" placeholder="e.g. 0.0" required />
+          </div>
+          
+          <!-- 11. Penalty Comments -->
+          <div class="form-group" style="margin-top: 1rem;">
+            <label for="kpiPenaltyComments">Penalty Comments</label>
+            <textarea id="kpiPenaltyComments" rows="2" placeholder="Explain the penalty here (if any)..."></textarea>
+          </div>
+
+          <!-- 12. Areas of Improvement Comments -->
+          <div class="form-group" style="margin-top: 1rem;">
+            <label for="kpiImprovements">Areas of Improvement / Comments</label>
+            <textarea id="kpiImprovements" rows="3" placeholder="Enter manual feedback or areas of improvement here..."></textarea>
+          </div>
+
+        </div>
+        <div class="drawer-footer">
+          <button type="button" class="btn-secondary" id="cancelKpiModal">Cancel</button>
+          <button type="submit" class="btn-primary">Save Evaluation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Employee Reviews Drawer -->
+  <div id="reviewsModal" class="drawer-overlay">
+    <div class="drawer-content glass-panel">
+      <div class="drawer-header">
+        <h2 id="reviewsModalTitle">Employee Reviews</h2>
+        <button class="close-btn" id="closeReviewsModal">&times;</button>
+      </div>
+      <div class="drawer-body-scroll">
+        <!-- Summary Stats -->
+        <div class="reviews-summary" style="display: flex; gap: 1rem; margin-bottom: 1.5rem; background: rgba(255,255,255,0.03); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border);">
+          <div style="flex: 1; text-align: center;">
+            <div style="font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 0.25rem;">Total Reviews</div>
+            <div id="reviewSummaryCount" style="font-size: 1.5rem; font-weight: 700; color: var(--color-text);">0</div>
+          </div>
+          <div style="flex: 1; text-align: center; border-left: 1px solid var(--color-border);">
+            <div style="font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 0.25rem;">Avg Rating</div>
+            <div id="reviewSummaryAvg" style="font-size: 1.5rem; font-weight: 700; color: #fb923c;">0.00</div>
+          </div>
+        </div>
+        
+        <!-- Comments List -->
+        <div id="reviewsListContainer" class="reviews-list-container">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Employee Report Card Modal -->
+  <div id="reportCardModal" class="drawer-overlay" style="z-index: 1100;">
+    <div class="drawer-content glass-panel" style="max-width: 700px; width: 90%;">
+      <div class="drawer-header no-print" style="border-bottom: 1px solid var(--color-border); padding-bottom: 1rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="margin: 0;">Digital Report Card</h2>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <button class="btn-primary" id="printReportCardBtn" style="padding: 0.5rem 1rem; font-size: 0.85rem; display: flex; align-items: center; gap: 0.25rem;">
+            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+            </svg>
+            <span>Print</span>
+          </button>
+          <button class="btn-secondary" id="shareEmailBtn" title="Share via Email" style="padding: 0.5rem; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px;">
+            <svg style="width: 1.1rem; height: 1.1rem;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+            </svg>
+          </button>
+          <button class="btn-secondary" id="shareWhatsappBtn" title="Share via WhatsApp" style="padding: 0.5rem; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; color: #22c55e; border-color: rgba(34, 197, 94, 0.2); background: rgba(34, 197, 94, 0.05);">
+            <svg style="width: 1.1rem; height: 1.1rem;" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M17.472 14.382c-.022-.015-.044-.03-.067-.043-.223-.11-.476-.234-.73-.359-.253-.125-.506-.25-.76-.375-.125-.062-.25-.125-.375-.187-.062-.03-.125-.063-.187-.094l-.15-.078c-.285-.145-.584-.047-.788.156l-.36.36c-.156.156-.312.312-.468.468-.125.125-.262.156-.438.062a4.875 4.875 0 01-1.077-.738 5.7 5.7 0 01-1.042-1.127c-.094-.156-.078-.293.047-.418.156-.156.312-.312.468-.468l.245-.246c.156-.156.203-.36.125-.547l-.375-.875-.36-.84c-.062-.156-.21-.265-.375-.265h-.062c-.157 0-.313.047-.438.156l-.375.375c-.328.328-.531.75-.547 1.219-.047.968.25 1.953.844 2.828.594.875 1.39 1.594 2.296 2.14a7.188 7.188 0 002.953.985h.063c.484.015.937-.172 1.28-.515l.375-.375c.187-.188.265-.453.187-.703l-.468-1.11zM12.006 2a10 10 0 00-10 10c0 1.86.51 3.6 1.39 5.1L2 22l5.1-1.34c1.44.83 3.1 1.34 4.9 1.34a10 10 0 0010-10A10 10 0 0012.006 2zM12 20.06c-1.63 0-3.15-.46-4.46-1.27l-.32-.2-3 1 1-3.2-.23-.37A8 8 0 1112 20.06z"></path>
+            </svg>
+          </button>
+          <button class="close-btn" id="closeReportCardModal">&times;</button>
+        </div>
+      </div>
+      
+      <div class="drawer-body-scroll printable-report-card" id="reportCardPrintArea">
+        <div class="report-card-container" style="padding: 1.5rem; background: rgba(255,255,255,0.01); border: 1px solid var(--color-border); border-radius: 12px; color: var(--color-text-primary);">
+          
+          <!-- Store Header -->
+          <div style="text-align: center; margin-bottom: 1.5rem; border-bottom: 2px dashed var(--color-border); padding-bottom: 1rem;">
+            <h1 style="font-size: 1.5rem; color: var(--color-primary); font-weight: 800; letter-spacing: 1px; margin-bottom: 0.25rem;">FINE BEARING & OIL SEAL STORE</h1>
+            <p style="font-size: 0.85rem; color: var(--color-text-secondary); text-transform: uppercase;">Employee Performance Report Card</p>
+          </div>
+
+          <!-- Employee Info Grid -->
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem; background: rgba(255, 255, 255, 0.02); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border);">
+            <div>
+              <div style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase;">Employee Name</div>
+              <div id="rcEmpName" style="font-size: 1.1rem; font-weight: 700; color: var(--color-text-primary); margin-top: 0.25rem;">-</div>
+            </div>
+            <div>
+              <div style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase;">Employee ID</div>
+              <div id="rcEmpId" style="font-size: 1.1rem; font-weight: 700; color: var(--color-text-primary); margin-top: 0.25rem;">-</div>
+            </div>
+            <div>
+              <div style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase;">Category / Role</div>
+              <div id="rcEmpCategory" style="font-size: 1rem; font-weight: 600; color: var(--color-text-primary); margin-top: 0.25rem;">-</div>
+            </div>
+            <div>
+              <div style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase;">Evaluation Period</div>
+              <div id="rcPeriod" style="font-size: 1rem; font-weight: 600; color: var(--color-text-primary); margin-top: 0.25rem;">-</div>
+            </div>
+          </div>
+
+          <!-- Performance Scoring Summary Block -->
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; text-align: center;">
+            <div style="background: rgba(255, 255, 255, 0.03); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border);">
+              <div style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase; margin-bottom: 0.25rem;">Final Score</div>
+              <div id="rcFinalScore" style="font-size: 1.8rem; font-weight: 800; color: #fb923c;">0.00 / 10</div>
+            </div>
+            <div style="background: rgba(255, 255, 255, 0.03); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border);">
+              <div style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase; margin-bottom: 0.25rem;">Leaderboard Rank</div>
+              <div id="rcRank" style="font-size: 1.8rem; font-weight: 800; color: var(--color-text-primary);">#0</div>
+            </div>
+            <div style="background: rgba(255, 255, 255, 0.03); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border);">
+              <div style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase; margin-bottom: 0.25rem;">Performance Status</div>
+              <div style="margin-top: 0.25rem;"><span id="rcStatus" class="performance-status status-good" style="font-size: 0.9rem; padding: 0.35rem 0.75rem;">-</span></div>
+            </div>
+          </div>
+
+          <!-- KPI & Metrics breakdown -->
+          <div style="margin-bottom: 1.5rem;">
+            <h3 style="font-size: 0.95rem; text-transform: uppercase; color: var(--color-primary); border-bottom: 1px solid var(--color-border); padding-bottom: 0.35rem; margin-bottom: 0.75rem; letter-spacing: 0.5px;">Detailed KPI Scores</h3>
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;" id="rcMetricsTable">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--color-border); color: var(--color-text-secondary); text-align: left;">
+                  <th style="padding: 0.5rem 0;">Metric Description</th>
+                  <th style="padding: 0.5rem 0; text-align: right;">Score (out of 10)</th>
+                </tr>
+              </thead>
+              <tbody id="rcMetricsBody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Penalty and Feedback Block -->
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 2rem;">
+            <div style="background: rgba(248, 113, 113, 0.03); padding: 1rem; border-radius: 8px; border: 1px solid rgba(248, 113, 113, 0.15);">
+              <h4 style="font-size: 0.85rem; text-transform: uppercase; color: #f87171; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.25rem;">
+                ⚠️ Deductions & Penalties
+              </h4>
+              <div style="font-size: 0.85rem; color: var(--color-text-primary); margin-bottom: 0.25rem;">
+                Points Deducted: <strong id="rcPenaltyValue" style="color: #f87171;">0.0</strong>
+              </div>
+              <p id="rcPenaltyComments" style="font-size: 0.8rem; color: var(--color-text-secondary); font-style: italic;">No penalties recorded.</p>
+            </div>
+            
+            <div style="background: rgba(34, 211, 238, 0.03); padding: 1rem; border-radius: 8px; border: 1px solid rgba(34, 211, 238, 0.15);">
+              <h4 style="font-size: 0.85rem; text-transform: uppercase; color: #22d3ee; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.25rem;">
+                👤 Customer Satisfaction
+              </h4>
+              <div style="font-size: 0.85rem; color: var(--color-text-primary); margin-bottom: 0.25rem;">
+                Average Rating: <strong id="rcCustAvg" style="color: #22d3ee;">0.00 / 5.0</strong>
+              </div>
+              <p id="rcCustReviewCount" style="font-size: 0.8rem; color: var(--color-text-secondary);">0 reviews submitted by customers.</p>
+            </div>
+          </div>
+
+          <!-- Areas of Improvement & Remarks -->
+          <div style="background: rgba(234, 88, 12, 0.03); padding: 1.25rem; border-radius: 8px; border: 1px solid rgba(234, 88, 12, 0.15); margin-bottom: 2rem;">
+            <h4 style="font-size: 0.85rem; text-transform: uppercase; color: var(--color-primary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.25rem; letter-spacing: 0.5px;">
+              📈 Areas of Improvement & Feedback
+            </h4>
+            <div id="rcAreasOfImprovement" style="font-size: 0.85rem; color: var(--color-text-primary); line-height: 1.6;">
+              <!-- Dynamically populated suggested metrics and advice -->
+            </div>
+          </div>
+
+          <!-- Signature Lines -->
+          <div style="display: flex; justify-content: space-between; margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--color-border);">
+            <div style="text-align: center; width: 40%;">
+              <div style="border-bottom: 1px solid var(--color-text-secondary); width: 100%; margin-bottom: 0.25rem; height: 1.5rem;"></div>
+              <span style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase;">Employee Signature</span>
+            </div>
+            <div style="text-align: center; width: 40%;">
+              <div style="border-bottom: 1px solid var(--color-text-secondary); width: 100%; margin-bottom: 0.25rem; height: 1.5rem;"></div>
+              <span style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase;">Authorized Signatory</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="js/admin.js"></script>
 </body>

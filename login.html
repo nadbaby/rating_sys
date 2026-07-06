@@ -1,20 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin Login - Feedback Portal</title>
   <meta name="description" content="Admin login for feedback dashboard." />
   <link rel="stylesheet" href="css/styles.css" />
+  <script src="js/theme.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
   <header class="container main-header">
     <div class="logo">
       <span class="logo-accent">Feedback</span>Portal
     </div>
+    <button id="themeToggleBtn">
+      Light Mode
+    </button>
   </header>
   <main class="container login-container">
     <section class="login-panel glass-panel" id="loginSection">
@@ -35,4 +41,5 @@
   </main>
   <script type="module" src="js/admin.js"></script>
 </body>
+
 </html>

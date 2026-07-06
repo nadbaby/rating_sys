@@ -64,16 +64,30 @@ app.get('/api/employees/:id', (req, res) => {
 
 // Add new employee
 app.post('/api/employees', (req, res) => {
-  const { employeeId, name } = req.body;
+  const { employeeId, name, category } = req.body;
   if (!employeeId || !name) {
     return res.status(400).json({ error: "Employee ID and Name are required." });
   }
 
   try {
-    const created = dbHelper.addEmployee({ employeeId, name });
+    const created = dbHelper.addEmployee({ employeeId, name, category });
     res.status(201).json(created);
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+// Update employee KPIs
+app.post('/api/employees/:id/kpi', (req, res) => {
+  try {
+    const updated = dbHelper.updateEmployeeKpi(req.params.id, req.body);
+    if (updated) {
+      res.json(updated);
+    } else {
+      res.status(404).json({ error: "Employee not found." });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

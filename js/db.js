@@ -83,11 +83,59 @@ export const dbHelper = {
     data.employees.push({
       employeeId: employee.employeeId,
       name: employee.name,
+      category: employee.category || "Sales",
       createdAt: new Date().toISOString()
     });
 
     writeDb(data);
     return employee;
+  },
+
+  updateEmployeeKpi(id, kpi) {
+    const data = readDb();
+    if (!data.employees) data.employees = [];
+
+    const empIndex = data.employees.findIndex(e => e.employeeId === id);
+    if (empIndex !== -1) {
+      const getNum = (val, def) => (val !== undefined && val !== null && !isNaN(Number(val))) ? Number(val) : def;
+      
+      data.employees[empIndex] = {
+        ...data.employees[empIndex],
+        name: kpi.name || data.employees[empIndex].name,
+        category: kpi.category || data.employees[empIndex].category || "Sales",
+        // Standard/Common KPIs
+        discipline: getNum(kpi.discipline, 10.0),
+        attendance: getNum(kpi.attendance, 10.0),
+        penalty: getNum(kpi.penalty, 0.0),
+        penaltyComments: kpi.penaltyComments || "",
+        improvements: kpi.improvements || "",
+        pickedItems: getNum(kpi.pickedItems, 0),
+        kpiUpdatedAt: kpi.kpiUpdatedAt || new Date().toISOString(),
+
+        // Sales specific KPIs
+        customerHandling: getNum(kpi.customerHandling, 10.0),
+        billingAccuracy: getNum(kpi.billingAccuracy, 10.0),
+        independentHandling: getNum(kpi.independentHandling, 10.0),
+        followUpReport: getNum(kpi.followUpReport, 10.0),
+        customerSatisfaction: getNum(kpi.customerSatisfaction, 10.0),
+        cleanliness: getNum(kpi.cleanliness, 10.0),
+
+        // Store specific KPIs
+        pickingAccuracy: getNum(kpi.pickingAccuracy, 10.0),
+        stockSorting: getNum(kpi.stockSorting, 10.0),
+        materialSecurity: getNum(kpi.materialSecurity, 10.0),
+        storeCleanliness: getNum(kpi.storeCleanliness, 10.0),
+
+        // Admin/Accounts specific KPIs
+        billingTaxAccuracy: getNum(kpi.billingTaxAccuracy, 10.0),
+        paymentFollowUp: getNum(kpi.paymentFollowUp, 10.0),
+        filingBookkeeping: getNum(kpi.filingBookkeeping, 10.0),
+        officeDecorum: getNum(kpi.officeDecorum, 10.0)
+      };
+      writeDb(data);
+      return data.employees[empIndex];
+    }
+    return null;
   },
 
   deleteEmployee(id) {
