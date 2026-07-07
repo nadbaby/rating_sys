@@ -1809,8 +1809,11 @@ textarea {
     display: none !important;
   }
 
-  #reportCardModal,
   .drawer-overlay {
+    display: none !important;
+  }
+
+  #reportCardModal.active {
     position: absolute !important;
     left: 0 !important;
     top: 0 !important;
@@ -1842,6 +1845,13 @@ textarea {
     transform: none !important;
     display: block !important;
     visibility: visible !important;
+  }
+
+  .drawer-body-scroll {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    flex: none !important;
   }
 
   #reportCardPrintArea {
