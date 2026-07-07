@@ -11,6 +11,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#ff9f0a" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
 </head>
 <body>
   <!-- Toast Notification -->
@@ -261,10 +264,27 @@
       <!-- ================= Tab 3: Leaderboard ================= -->
       <div id="leaderboardTab" class="tab-content">
         <div class="leaderboard-card glass-card">
-          <div class="leaderboard-header">
+          <div class="leaderboard-header" style="margin-bottom: 1.5rem;">
             <h2>Employee Leaderboard</h2>
-            <p class="helper-text" style="margin-bottom: 20px;">Ranked by average rating (highest first) and total reviews count</p>
+            <p class="helper-text">Ranked by blended customer satisfaction and administrator KPI scores.</p>
           </div>
+          
+          <!-- Search & Filters for Leaderboard -->
+          <div style="display: flex; gap: 0.75rem; margin-bottom: 2rem; flex-wrap: wrap;" class="no-print">
+            <div style="position: relative; flex: 1; min-width: 200px;">
+              <span style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--color-text-secondary); pointer-events: none; font-size: 0.85rem;">🔍</span>
+              <input type="text" id="searchLeaderboardInput" placeholder="Search leaderboard by name or ID..." style="width: 100%; padding: 0.55rem 1.25rem 0.55rem 2.2rem; border-radius: 8px; background: var(--color-bg-card); color: var(--color-text-primary); border: 1px solid var(--color-border); font-size: 0.85rem;" />
+            </div>
+            <select id="filterLeaderboardCategorySelect" style="padding: 0.55rem 1rem; border-radius: 8px; background: var(--color-bg-card); color: var(--color-text-primary); border: 1px solid var(--color-border); font-size: 0.85rem; font-weight: 500;">
+              <option value="all">All Categories</option>
+              <option value="Sales">Sales</option>
+              <option value="Store">Store</option>
+              <option value="Admin">Admin</option>
+            </select>
+          </div>
+
+          <!-- Leaderboard Podium (Top 3 Spotlight) -->
+          <div class="leaderboard-podium" id="leaderboardPodium"></div>
           <div class="table-responsive">
             <table class="custom-table">
               <thead>
@@ -828,5 +848,14 @@
   </div>
 
   <script type="module" src="js/admin.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((reg) => console.log('Service Worker registered successfully!', reg.scope))
+          .catch((err) => console.log('Service Worker registration failed:', err));
+      });
+    }
+  </script>
 </body>
 </html>

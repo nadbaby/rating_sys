@@ -136,6 +136,15 @@ app.post('/api/feedback', (req, res) => {
 // Serve static assets (js, css, images)
 app.use('/js', express.static(path.join(__dirname, 'js')));
 app.use('/css', express.static(path.join(__dirname, 'css')));
+app.use('/icons', express.static(path.join(__dirname, 'icons')));
+
+app.get('/manifest.json', (req, res) => {
+  res.sendFile(path.join(__dirname, 'manifest.json'));
+});
+
+app.get('/sw.js', (req, res) => {
+  res.sendFile(path.join(__dirname, 'sw.js'));
+});
 
 // Serve firebase-config.js specifically
 app.get('/firebase-config.js', (req, res) => {

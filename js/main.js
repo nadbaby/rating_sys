@@ -34,35 +34,64 @@ async function init() {
   const counterParam = getQueryParam('counter');
 
   if (empId) {
+    let employeeData = null;
+    let fallback = false;
     try {
       // Fetch employee details from Firestore
       const docRef = doc(db, "employees", empId);
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
-        const employeeData = docSnap.data();
-        currentEmployeeId = empId;
-        currentCounterName = employeeData.name;
-
-        // Render employee profile
-        employeeNameEl.textContent = employeeData.name;
-        employeeBadge.textContent = `Employee ID: ${empId}`;
-        employeeAvatar.textContent = employeeData.name.charAt(0).toUpperCase();
-        employeeAvatar.style.background = 'linear-gradient(135deg, var(--color-primary), #fdba74)';
-        employeeCard.style.display = 'flex';
-
-        formTitle.textContent = `Rate your interaction with ${employeeData.name}`;
-
-        // Show form
-        loadingCard.style.display = 'none';
-        formContainer.style.display = 'block';
+        employeeData = docSnap.data();
       } else {
         // Employee ID doesn't exist
         showError(`Employee with ID "${empId}" was not found in our directory.`);
+        return;
       }
     } catch (err) {
-      console.error("Error loading employee info:", err);
-      showError("Could not retrieve employee details. Please try again later.");
+      console.warn("Firestore employee fetch failed, trying local API:", err);
+      fallback = true;
+    }
+
+    if (fallback) {
+      try {
+        const res = await fetch(`/api/employees`);
+        if (res.ok) {
+          const list = await res.json();
+          const emp = list.find(e => e.employeeId === empId);
+          if (emp) {
+            employeeData = emp;
+          } else {
+            showError(`Employee with ID "${empId}" was not found in our directory.`);
+            return;
+          }
+        } else {
+          showError("Could not retrieve employee details. Please try again later.");
+          return;
+        }
+      } catch (err) {
+        console.error("Local API employee fetch failed:", err);
+        showError("Could not retrieve employee details. Please try again later.");
+        return;
+      }
+    }
+
+    if (employeeData) {
+      currentEmployeeId = empId;
+      currentCounterName = employeeData.name;
+
+      // Render employee profile
+      employeeNameEl.textContent = employeeData.name;
+      employeeBadge.textContent = `Employee ID: ${empId}`;
+      employeeAvatar.textContent = employeeData.name.charAt(0).toUpperCase();
+      employeeAvatar.style.background = 'linear-gradient(135deg, var(--color-primary), #fdba74)';
+      employeeCard.style.display = 'flex';
+
+      formTitle.textContent = `Rate your interaction with ${employeeData.name}`;
+
+      // Show form
+      loadingCard.style.display = 'none';
+      formContainer.style.display = 'block';
     }
   } else if (counterParam) {
     // Legacy support for counter query parameter
@@ -121,6 +150,7 @@ form.addEventListener('submit', async (e) => {
     return;
   }
 
+  let saved = false;
   try {
     await addDoc(collection(db, 'feedback'), {
       employeeId: currentEmployeeId,
@@ -130,10 +160,37 @@ form.addEventListener('submit', async (e) => {
       comment: comment || null,
       createdAt: serverTimestamp()
     });
+    saved = true;
+  } catch (err) {
+    console.warn('Firestore feedback save failed, trying local API:', err);
+  }
+
+  if (!saved) {
+    try {
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId: currentEmployeeId,
+          counter: currentCounterName,
+          customerName: customerName || "Anonymous",
+          rating: Number(rating),
+          comment: comment || null,
+          createdAt: new Date().toISOString()
+        })
+      });
+      if (res.ok) {
+        saved = true;
+      }
+    } catch (err) {
+      console.error('Local API save feedback failed:', err);
+    }
+  }
+
+  if (saved) {
     formContainer.style.display = 'none';
     thankYou.style.display = 'flex';
-  } catch (err) {
-    console.error('Error saving feedback:', err);
+  } else {
     alert('Something went wrong. Please try again later.');
   }
 });

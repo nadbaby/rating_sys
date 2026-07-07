@@ -68,6 +68,9 @@ function getEmployeeFeedbackLink(employeeId) {
 }
 
 // ==================== Login Page Logic ====================
+// Global flag for Firebase vs Local mode
+let useFirebase = true;
+
 if (document.getElementById("loginForm")) {
   const loginForm = document.getElementById("loginForm");
   const errorDiv = document.getElementById("loginError");
@@ -75,12 +78,42 @@ if (document.getElementById("loginForm")) {
     e.preventDefault();
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
+    
+    let loggedIn = false;
+    
+    // First try Firebase Auth
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // Redirect to dashboard after successful login
-      window.location.href = "admin.html";
+      loggedIn = true;
+      sessionStorage.setItem("auth_mode", "firebase");
     } catch (err) {
-      console.error(err);
+      console.warn("Firebase Auth login failed, trying local API:", err);
+    }
+    
+    // Fallback to local API
+    if (!loggedIn) {
+      try {
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            sessionStorage.setItem("auth_mode", "local");
+            sessionStorage.setItem("local_token", data.token);
+            loggedIn = true;
+          }
+        }
+      } catch (err) {
+        console.error("Local login failed:", err);
+      }
+    }
+    
+    if (loggedIn) {
+      window.location.href = "admin.html";
+    } else {
       errorDiv.style.display = "block";
     }
   });
@@ -88,14 +121,34 @@ if (document.getElementById("loginForm")) {
 
 // ==================== Dashboard Page Logic (admin.html) ====================
 if (document.getElementById("dashboardSection")) {
-  // Ensure the user is authenticated via Firebase Auth
-  onAuthStateChanged(auth, (user) => {
-    if (!user) {
+  const authMode = sessionStorage.getItem("auth_mode");
+  
+  if (authMode === "local") {
+    const token = sessionStorage.getItem("local_token");
+    if (!token) {
       window.location.href = "login.html";
-      return;
+    } else {
+      useFirebase = false;
+      initDashboard();
     }
-    initDashboard();
-  });
+  } else {
+    // Default to Firebase Auth check
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        // Double check local token as backup
+        const localToken = sessionStorage.getItem("local_token");
+        if (localToken) {
+          useFirebase = false;
+          initDashboard();
+        } else {
+          window.location.href = "login.html";
+        }
+      } else {
+        useFirebase = true;
+        initDashboard();
+      }
+    });
+  }
 
   async function initDashboard() {
     let cachedEmployees = [];
@@ -335,6 +388,27 @@ if (document.getElementById("dashboardSection")) {
       `;
     }
 
+    // Blended performance scoring formula
+    function getBlendedScore(kpiAvg, penalty, custAvg, reviewsCount, hasValidKpi) {
+      let score = 0;
+      if (hasValidKpi) {
+        if (reviewsCount > 0) {
+          // CustAvg (out of 5) scaled to 10 (custAvg * 2) has 40% weight, KpiAvg has 60%
+          score = (custAvg * 2) * 0.4 + kpiAvg * 0.6 - penalty;
+        } else {
+          score = kpiAvg - penalty;
+        }
+      } else {
+        if (reviewsCount > 0) {
+          // Only CustAvg scaled to 10
+          score = (custAvg * 2) - penalty;
+        } else {
+          score = 0.0;
+        }
+      }
+      return Math.max(0, Number(score));
+    }
+
     // Helper to render and show digital report card
     function showReportCard(empId) {
       const emp = cachedEmployees.find(e => e.employeeId === empId);
@@ -356,13 +430,15 @@ if (document.getElementById("dashboardSection")) {
         const stats = empStats[e.employeeId] || { count: 0, sum: 0 };
         const custAvg = stats.count ? stats.sum / stats.count : 0;
         const hasValidKpi = isKpiValidForRange(e.kpiUpdatedAt, range);
-        const { kpiAvg, finalScore } = calculateKpi(e, hasValidKpi);
+        const { kpiAvg, penalty } = calculateKpi(e, hasValidKpi);
+        const finalScore = getBlendedScore(kpiAvg, penalty, custAvg, stats.count, hasValidKpi);
         const pickedItems = (hasValidKpi && e.pickedItems !== undefined) ? e.pickedItems : 0;
-        return { employeeId: e.employeeId, custAvg, kpiAvg, pickedItems, finalScore };
+        return { employeeId: e.employeeId, custAvg, kpiAvg, pickedItems, finalScore, reviewsCount: stats.count };
       });
 
       ranked.sort((a, b) => {
         if (b.finalScore !== a.finalScore) return b.finalScore - a.finalScore;
+        if (b.reviewsCount !== a.reviewsCount) return b.reviewsCount - a.reviewsCount;
         return b.pickedItems - a.pickedItems;
       });
 
@@ -372,11 +448,13 @@ if (document.getElementById("dashboardSection")) {
       const stats = empStats[emp.employeeId] || { count: 0, sum: 0 };
       const custAvg = stats.count ? stats.sum / stats.count : 0;
       const hasValidKpi = isKpiValidForRange(emp.kpiUpdatedAt, range);
-      const { kpiAvg, finalScore, penalty } = calculateKpi(emp, hasValidKpi);
+      const { kpiAvg, penalty } = calculateKpi(emp, hasValidKpi);
+      const finalScore = getBlendedScore(kpiAvg, penalty, custAvg, stats.count, hasValidKpi);
       const pickedItems = (hasValidKpi && emp.pickedItems !== undefined) ? emp.pickedItems : 0;
 
       let performanceStatus = "Needs Imp.";
-      if (finalScore >= 9.0) performanceStatus = "Excellent";
+      if (finalScore === 0 && !hasValidKpi && stats.count === 0) performanceStatus = "No Evaluation";
+      else if (finalScore >= 9.0) performanceStatus = "Excellent";
       else if (finalScore >= 7.0) performanceStatus = "Good";
       else if (finalScore >= 5.0) performanceStatus = "Average";
 
@@ -417,13 +495,15 @@ if (document.getElementById("dashboardSection")) {
         const stats = empStats[e.employeeId] || { count: 0, sum: 0 };
         const custAvg = stats.count ? stats.sum / stats.count : 0;
         const hasValidKpi = isKpiValidForRange(e.kpiUpdatedAt, range);
-        const { kpiAvg, finalScore, penalty } = calculateKpi(e, hasValidKpi);
+        const { kpiAvg, penalty } = calculateKpi(e, hasValidKpi);
+        const finalScore = getBlendedScore(kpiAvg, penalty, custAvg, stats.count, hasValidKpi);
         const pickedItems = (hasValidKpi && e.pickedItems !== undefined) ? e.pickedItems : 0;
-        return { ...e, custAvg, kpiAvg, pickedItems, penalty, finalScore };
+        return { ...e, custAvg, kpiAvg, pickedItems, penalty, finalScore, reviewsCount: stats.count };
       });
 
       ranked.sort((a, b) => {
         if (b.finalScore !== a.finalScore) return b.finalScore - a.finalScore;
+        if (b.reviewsCount !== a.reviewsCount) return b.reviewsCount - a.reviewsCount;
         return b.pickedItems - a.pickedItems;
       });
 
@@ -433,11 +513,13 @@ if (document.getElementById("dashboardSection")) {
         const stats = empStats[emp.employeeId] || { count: 0, sum: 0 };
         const custAvg = stats.count ? stats.sum / stats.count : 0;
         const hasValidKpi = isKpiValidForRange(emp.kpiUpdatedAt, range);
-        const { kpiAvg, finalScore, penalty } = calculateKpi(emp, hasValidKpi);
+        const { kpiAvg, penalty } = calculateKpi(emp, hasValidKpi);
+        const finalScore = getBlendedScore(kpiAvg, penalty, custAvg, stats.count, hasValidKpi);
         const pickedItems = (hasValidKpi && emp.pickedItems !== undefined) ? emp.pickedItems : 0;
 
         let performanceStatus = "Needs Imp.";
-        if (finalScore >= 9.0) performanceStatus = "Excellent";
+        if (finalScore === 0 && !hasValidKpi && stats.count === 0) performanceStatus = "No Evaluation";
+        else if (finalScore >= 9.0) performanceStatus = "Excellent";
         else if (finalScore >= 7.0) performanceStatus = "Good";
         else if (finalScore >= 5.0) performanceStatus = "Average";
 
@@ -746,8 +828,9 @@ if (document.getElementById("dashboardSection")) {
         const hasValidKpi = isKpiValidForRange(emp.kpiUpdatedAt, range);
         const { finalScore } = calculateKpi(emp, hasValidKpi);
 
-        // Alert if finalScore < 6.5 OR custAvg < 3.0 (with reviews)
-        if (finalScore < 6.5 || (stats.count > 0 && custAvg < 3.0)) {
+        // Alert if evaluated and finalScore < 6.5 OR has reviews and custAvg < 3.0
+        const isFlagged = (hasValidKpi && finalScore < 6.5) || (stats.count > 0 && custAvg < 3.0);
+        if (isFlagged) {
           flagged.push({
             name: emp.name,
             id: emp.employeeId,
@@ -914,37 +997,40 @@ if (document.getElementById("dashboardSection")) {
     }
 
     function calculateKpi(emp, hasValidKpi) {
+      if (!hasValidKpi) {
+        return { kpiAvg: 0.0, finalScore: 0.0, penalty: 0.0 };
+      }
       const category = getNormalizedCategory(emp.category);
-      const discipline = (hasValidKpi && emp.discipline !== undefined) ? emp.discipline : 10.0;
-      const attendance = (hasValidKpi && emp.attendance !== undefined) ? emp.attendance : 10.0;
+      const discipline = emp.discipline !== undefined ? emp.discipline : 10.0;
+      const attendance = emp.attendance !== undefined ? emp.attendance : 10.0;
       
       let sum = discipline + attendance;
       let count = 2;
 
       if (category === "Sales") {
-        sum += (hasValidKpi && emp.customerHandling !== undefined) ? emp.customerHandling : 10.0;
-        sum += (hasValidKpi && emp.billingAccuracy !== undefined) ? emp.billingAccuracy : 10.0;
-        sum += (hasValidKpi && emp.independentHandling !== undefined) ? emp.independentHandling : 10.0;
-        sum += (hasValidKpi && emp.followUpReport !== undefined) ? emp.followUpReport : 10.0;
-        sum += (hasValidKpi && emp.customerSatisfaction !== undefined) ? emp.customerSatisfaction : 10.0;
-        sum += (hasValidKpi && emp.cleanliness !== undefined) ? emp.cleanliness : 10.0;
+        sum += emp.customerHandling !== undefined ? emp.customerHandling : 10.0;
+        sum += emp.billingAccuracy !== undefined ? emp.billingAccuracy : 10.0;
+        sum += emp.independentHandling !== undefined ? emp.independentHandling : 10.0;
+        sum += emp.followUpReport !== undefined ? emp.followUpReport : 10.0;
+        sum += emp.customerSatisfaction !== undefined ? emp.customerSatisfaction : 10.0;
+        sum += emp.cleanliness !== undefined ? emp.cleanliness : 10.0;
         count += 6;
       } else if (category === "Store") {
-        sum += (hasValidKpi && emp.pickingAccuracy !== undefined) ? emp.pickingAccuracy : 10.0;
-        sum += (hasValidKpi && emp.stockSorting !== undefined) ? emp.stockSorting : 10.0;
-        sum += (hasValidKpi && emp.materialSecurity !== undefined) ? emp.materialSecurity : 10.0;
-        sum += (hasValidKpi && emp.storeCleanliness !== undefined) ? emp.storeCleanliness : 10.0;
+        sum += emp.pickingAccuracy !== undefined ? emp.pickingAccuracy : 10.0;
+        sum += emp.stockSorting !== undefined ? emp.stockSorting : 10.0;
+        sum += emp.materialSecurity !== undefined ? emp.materialSecurity : 10.0;
+        sum += emp.storeCleanliness !== undefined ? emp.storeCleanliness : 10.0;
         count += 4;
       } else if (category === "Admin") {
-        sum += (hasValidKpi && emp.billingTaxAccuracy !== undefined) ? emp.billingTaxAccuracy : 10.0;
-        sum += (hasValidKpi && emp.paymentFollowUp !== undefined) ? emp.paymentFollowUp : 10.0;
-        sum += (hasValidKpi && emp.filingBookkeeping !== undefined) ? emp.filingBookkeeping : 10.0;
-        sum += (hasValidKpi && emp.officeDecorum !== undefined) ? emp.officeDecorum : 10.0;
+        sum += emp.billingTaxAccuracy !== undefined ? emp.billingTaxAccuracy : 10.0;
+        sum += emp.paymentFollowUp !== undefined ? emp.paymentFollowUp : 10.0;
+        sum += emp.filingBookkeeping !== undefined ? emp.filingBookkeeping : 10.0;
+        sum += emp.officeDecorum !== undefined ? emp.officeDecorum : 10.0;
         count += 4;
       }
 
       const kpiAvg = sum / count;
-      const penalty = (hasValidKpi && emp.penalty !== undefined) ? emp.penalty : 0.0;
+      const penalty = emp.penalty !== undefined ? emp.penalty : 0.0;
       const finalScore = Math.max(0, kpiAvg - penalty);
 
       return { kpiAvg, finalScore, penalty };
@@ -1263,30 +1349,74 @@ if (document.getElementById("dashboardSection")) {
     async function loadData() {
       const fromDate = document.getElementById("dateFrom").value;
       const toDate = document.getElementById("dateTo").value;
-      let q = collection(db, "feedback");
-      const constraints = [];
-      if (fromDate) constraints.push(where("createdAt", ">=", Timestamp.fromDate(new Date(fromDate))));
-      if (toDate) constraints.push(where("createdAt", "<=", Timestamp.fromDate(new Date(toDate))));
-      if (constraints.length) q = query(q, ...constraints, orderBy("createdAt", "desc"));
-      else q = query(q, orderBy("createdAt", "desc"));
-      const snapshot = await getDocs(q);
-      const feedbacks = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        feedbacks.push({ id: doc.id, ...data });
-      });
-      return feedbacks;
+      
+      if (useFirebase) {
+        try {
+          let q = collection(db, "feedback");
+          const constraints = [];
+          if (fromDate) constraints.push(where("createdAt", ">=", Timestamp.fromDate(new Date(fromDate))));
+          if (toDate) constraints.push(where("createdAt", "<=", Timestamp.fromDate(new Date(toDate))));
+          if (constraints.length) q = query(q, ...constraints, orderBy("createdAt", "desc"));
+          else q = query(q, orderBy("createdAt", "desc"));
+          const snapshot = await getDocs(q);
+          const feedbacks = [];
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            feedbacks.push({ id: doc.id, ...data });
+          });
+          return feedbacks;
+        } catch (err) {
+          console.warn("Firebase loadData failed, falling back to local API:", err);
+          useFirebase = false;
+        }
+      }
+      
+      // Fallback local API
+      try {
+        let url = `/api/feedback?`;
+        if (fromDate) url += `fromDate=${encodeURIComponent(fromDate)}&`;
+        if (toDate) url += `toDate=${encodeURIComponent(toDate)}&`;
+        const res = await fetch(url);
+        if (res.ok) {
+          return await res.json();
+        }
+      } catch (err) {
+        console.error("Local API loadData failed:", err);
+      }
+      return [];
     }
 
     // Load employee directory
     async function loadEmployees() {
-      const q = query(collection(db, "employees"), orderBy("createdAt", "desc"));
-      const snapshot = await getDocs(q);
-      const employees = [];
-      snapshot.forEach((doc) => {
-        employees.push(doc.data());
-      });
-      return employees;
+      if (useFirebase) {
+        try {
+          const q = query(collection(db, "employees"), orderBy("createdAt", "desc"));
+          const snapshot = await getDocs(q);
+          const employees = [];
+          snapshot.forEach((doc) => {
+            employees.push(doc.data());
+          });
+          // If Firestore is connected but empty, check if we should fall back to local API
+          if (employees.length > 0) {
+            return employees;
+          }
+          console.warn("Firebase returned 0 employees, checking local API...");
+        } catch (err) {
+          console.warn("Firebase loadEmployees failed, falling back to local API:", err);
+          useFirebase = false;
+        }
+      }
+      
+      // Fallback local API
+      try {
+        const res = await fetch("/api/employees");
+        if (res.ok) {
+          return await res.json();
+        }
+      } catch (err) {
+        console.error("Local API loadEmployees failed:", err);
+      }
+      return [];
     }
 
     // Refresh entire data & view
@@ -1504,21 +1634,28 @@ if (document.getElementById("dashboardSection")) {
     // Render Table inside Leaderboard Tab
     function renderLeaderboard(employees, empStats) {
       const tbody = document.getElementById("leaderboardTableBody");
+      const podiumContainer = document.getElementById("leaderboardPodium");
+      
       tbody.innerHTML = "";
+      if (podiumContainer) {
+        podiumContainer.innerHTML = "";
+        podiumContainer.style.display = "none";
+      }
 
       if (employees.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="no-data">No employees registered yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="no-data">No employees registered yet.</td></tr>';
         return;
       }
 
       // Map stats and calculate average
       const range = getActiveDateRange();
-      const ranked = employees.map(emp => {
+      let ranked = employees.map(emp => {
         const stats = empStats[emp.employeeId] || { count: 0, sum: 0 };
         const custAvg = stats.count ? stats.sum / stats.count : 0;
 
         const hasValidKpi = isKpiValidForRange(emp.kpiUpdatedAt, range);
-        const { kpiAvg, finalScore, penalty } = calculateKpi(emp, hasValidKpi);
+        const { kpiAvg, penalty } = calculateKpi(emp, hasValidKpi);
+        const finalScore = getBlendedScore(kpiAvg, penalty, custAvg, stats.count, hasValidKpi);
         const pickedItems = (hasValidKpi && emp.pickedItems !== undefined) ? emp.pickedItems : 0;
 
         return {
@@ -1527,17 +1664,80 @@ if (document.getElementById("dashboardSection")) {
           kpiAvg,
           pickedItems,
           penalty,
-          finalScore
+          finalScore,
+          hasValidKpi,
+          reviewsCount: stats.count
         };
       });
 
-      // Sort by finalScore descending, then pickedItems descending
+      // Filter by Search Input and Category Select
+      const searchVal = (document.getElementById("searchLeaderboardInput")?.value || "").trim().toLowerCase();
+      const catVal = document.getElementById("filterLeaderboardCategorySelect")?.value || "all";
+
+      if (searchVal || catVal !== "all") {
+        ranked = ranked.filter(emp => {
+          const matchesSearch = emp.name.toLowerCase().includes(searchVal) || emp.employeeId.toLowerCase().includes(searchVal);
+          const matchesCategory = catVal === "all" || getNormalizedCategory(emp.category) === getNormalizedCategory(catVal);
+          return matchesSearch && matchesCategory;
+        });
+      }
+
+      // Sort by finalScore descending, then reviewsCount descending, then pickedItems descending
       ranked.sort((a, b) => {
         if (b.finalScore !== a.finalScore) {
           return b.finalScore - a.finalScore;
         }
+        if (b.reviewsCount !== a.reviewsCount) {
+          return b.reviewsCount - a.reviewsCount;
+        }
         return b.pickedItems - a.pickedItems;
       });
+
+      if (ranked.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="no-data">No matching leaderboard results.</td></tr>';
+        return;
+      }
+
+      // Render podium for Top 3
+      if (podiumContainer) {
+        const top3 = ranked.filter(emp => emp.finalScore > 0 || emp.reviewsCount > 0).slice(0, 3);
+        if (top3.length > 0) {
+          top3.forEach((emp, index) => {
+            const rank = index + 1;
+            let rankClass = "gold";
+            let crown = "👑";
+            if (rank === 2) {
+              rankClass = "silver";
+              crown = "🥈";
+            } else if (rank === 3) {
+              rankClass = "bronze";
+              crown = "🥉";
+            }
+
+            const scoreText = emp.finalScore.toFixed(2);
+            const avatarLetter = emp.name ? emp.name.charAt(0).toUpperCase() : "?";
+            
+            const podiumCard = document.createElement("div");
+            podiumCard.className = `podium-card ${rankClass}`;
+            podiumCard.setAttribute("data-id", emp.employeeId);
+            podiumCard.innerHTML = `
+              <div class="podium-badge-crown">${crown}</div>
+              <div class="podium-avatar">${avatarLetter}</div>
+              <div class="podium-name">${escapeHtml(emp.name)}</div>
+              <div class="podium-category">${escapeHtml(emp.category || "General")}</div>
+              <div class="podium-score">${scoreText} <span style="font-size:0.75rem; font-weight:500; opacity: 0.8;">/ 10</span></div>
+              <div class="podium-reviews">${emp.reviewsCount} review${emp.reviewsCount === 1 ? '' : 's'}</div>
+            `;
+            
+            podiumCard.addEventListener("click", () => {
+              showReportCard(emp.employeeId);
+            });
+            
+            podiumContainer.appendChild(podiumCard);
+          });
+          podiumContainer.style.display = "flex";
+        }
+      }
 
       ranked.forEach((emp, index) => {
         const rank = index + 1;
@@ -1555,13 +1755,16 @@ if (document.getElementById("dashboardSection")) {
         }
 
         const custAvgText = emp.custAvg ? emp.custAvg.toFixed(2) : "0.00";
-        const kpiAvgText = emp.kpiAvg.toFixed(2);
+        const kpiAvgText = emp.hasValidKpi ? emp.kpiAvg.toFixed(2) : "—";
         const finalScoreText = emp.finalScore.toFixed(2);
         const percentage = Math.max(0, Math.min(100, (emp.finalScore / 10) * 100));
 
         let statusText = "Needs Imp.";
         let statusClass = "status-warning";
-        if (emp.finalScore >= 9.0) {
+        if (emp.finalScore === 0 && !emp.hasValidKpi && emp.reviewsCount === 0) {
+          statusText = "No Evaluation";
+          statusClass = "status-pending";
+        } else if (emp.finalScore >= 9.0) {
           statusText = "Excellent";
           statusClass = "status-excellent";
         } else if (emp.finalScore >= 7.0) {
@@ -1613,6 +1816,20 @@ if (document.getElementById("dashboardSection")) {
           </td>
         `;
         tbody.appendChild(tr);
+      });
+
+      // Wire report buttons inside leaderboard table
+      tbody.querySelectorAll(".btn-report").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const empId = btn.getAttribute("data-id");
+          showReportCard(empId);
+        });
+      });
+      tbody.querySelectorAll(".emp-name.clickable-name").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const empId = btn.getAttribute("data-id");
+          showReportCard(empId);
+        });
       });
     }
 
@@ -2004,6 +2221,32 @@ if (document.getElementById("dashboardSection")) {
     if (filterCategorySelect) {
       filterCategorySelect.addEventListener("change", triggerLocalTableFilter);
     }
+
+    // Wire Leaderboard Real-time Table Searching & Filtering
+    const searchLeaderboardInput = document.getElementById("searchLeaderboardInput");
+    const filterLeaderboardCategorySelect = document.getElementById("filterLeaderboardCategorySelect");
+
+    const triggerLeaderboardFilter = () => {
+      const empStats = {};
+      cachedEmployees.forEach(e => {
+        empStats[e.employeeId] = { count: 0, sum: 0 };
+        cachedFeedbacks.forEach(f => {
+          if (f.employeeId === e.employeeId || f.counter === e.name) {
+            empStats[e.employeeId].count++;
+            empStats[e.employeeId].sum += f.rating;
+          }
+        });
+      });
+      renderLeaderboard(cachedEmployees, empStats);
+    };
+
+    if (searchLeaderboardInput) {
+      searchLeaderboardInput.addEventListener("input", triggerLeaderboardFilter);
+    }
+    if (filterLeaderboardCategorySelect) {
+      filterLeaderboardCategorySelect.addEventListener("change", triggerLeaderboardFilter);
+    }
+
     // Initial fetch
     refreshDashboardAndEmployees();
     checkEvaluationPeriod();
