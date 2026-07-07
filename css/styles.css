@@ -1243,6 +1243,13 @@ textarea {
   border-radius: 99px;
 }
 
+.drawer-content form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
 .drawer-footer {
   display: flex;
   justify-content: flex-end;
