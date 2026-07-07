@@ -1743,6 +1743,37 @@ textarea {
   }
 }
 
+/* Leaderboard Period Type Switcher */
+.leaderboard-type-switcher {
+  display: flex;
+  background: var(--color-bg-card);
+  padding: 3px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+}
+
+.leaderboard-type-switcher button {
+  padding: 0.55rem 1.15rem;
+  border-radius: 8px;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  color: var(--color-text-secondary);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.leaderboard-type-switcher button:hover {
+  color: var(--color-text-primary);
+}
+
+.leaderboard-type-switcher button.active {
+  background: var(--color-primary);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(255, 159, 10, 0.3);
+}
+
 /* ==================== Print Styles ==================== */
 @media print {
   body {

@@ -153,6 +153,7 @@ if (document.getElementById("dashboardSection")) {
   async function initDashboard() {
     let cachedEmployees = [];
     let cachedFeedbacks = [];
+    let leaderboardType = "monthly";
     let myChart = null;
     let myTrendChart = null;
 
@@ -1510,7 +1511,7 @@ if (document.getElementById("dashboardSection")) {
       renderEmployeeTable(employees, empStats);
 
       // Render Leaderboard Table
-      renderLeaderboard(employees, empStats);
+      renderLeaderboard(employees);
 
       // Render Performance Chart
       updatePerformanceChart(employees, empStats);
@@ -1632,7 +1633,7 @@ if (document.getElementById("dashboardSection")) {
     }
 
     // Render Table inside Leaderboard Tab
-    function renderLeaderboard(employees, empStats) {
+    function renderLeaderboard(employees) {
       const tbody = document.getElementById("leaderboardTableBody");
       const podiumContainer = document.getElementById("leaderboardPodium");
       
@@ -1647,13 +1648,51 @@ if (document.getElementById("dashboardSection")) {
         return;
       }
 
+      // Calculate local stats based on selected leaderboard period type (Monthly vs Day)
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+      // KPI validity range check
+      const kpiRange = { start: startOfMonth, end: endOfMonth };
+
+      // Initialize stats map
+      const leaderboardStats = {};
+      employees.forEach(emp => {
+        leaderboardStats[emp.employeeId] = { count: 0, sum: 0 };
+      });
+
+      // Filter and pre-aggregate loaded feedback based on leaderboardType
+      cachedFeedbacks.forEach(f => {
+        const fDate = f.createdAt ? (f.createdAt.toDate ? f.createdAt.toDate() : new Date(f.createdAt)) : null;
+        if (!fDate) return;
+
+        let matchesPeriod = false;
+        if (leaderboardType === "monthly") {
+          matchesPeriod = fDate >= startOfMonth && fDate <= endOfMonth;
+        } else if (leaderboardType === "day") {
+          matchesPeriod = fDate >= startOfToday && fDate <= endOfToday;
+        }
+
+        if (matchesPeriod) {
+          employees.forEach(emp => {
+            if (f.employeeId === emp.employeeId || f.counter === emp.name) {
+              leaderboardStats[emp.employeeId].count++;
+              leaderboardStats[emp.employeeId].sum += f.rating;
+            }
+          });
+        }
+      });
+
       // Map stats and calculate average
-      const range = getActiveDateRange();
       let ranked = employees.map(emp => {
-        const stats = empStats[emp.employeeId] || { count: 0, sum: 0 };
+        const stats = leaderboardStats[emp.employeeId] || { count: 0, sum: 0 };
         const custAvg = stats.count ? stats.sum / stats.count : 0;
 
-        const hasValidKpi = isKpiValidForRange(emp.kpiUpdatedAt, range);
+        const hasValidKpi = isKpiValidForRange(emp.kpiUpdatedAt, kpiRange);
         const { kpiAvg, penalty } = calculateKpi(emp, hasValidKpi);
         const finalScore = getBlendedScore(kpiAvg, penalty, custAvg, stats.count, hasValidKpi);
         const pickedItems = (hasValidKpi && emp.pickedItems !== undefined) ? emp.pickedItems : 0;
@@ -2227,17 +2266,7 @@ if (document.getElementById("dashboardSection")) {
     const filterLeaderboardCategorySelect = document.getElementById("filterLeaderboardCategorySelect");
 
     const triggerLeaderboardFilter = () => {
-      const empStats = {};
-      cachedEmployees.forEach(e => {
-        empStats[e.employeeId] = { count: 0, sum: 0 };
-        cachedFeedbacks.forEach(f => {
-          if (f.employeeId === e.employeeId || f.counter === e.name) {
-            empStats[e.employeeId].count++;
-            empStats[e.employeeId].sum += f.rating;
-          }
-        });
-      });
-      renderLeaderboard(cachedEmployees, empStats);
+      renderLeaderboard(cachedEmployees);
     };
 
     if (searchLeaderboardInput) {
@@ -2245,6 +2274,26 @@ if (document.getElementById("dashboardSection")) {
     }
     if (filterLeaderboardCategorySelect) {
       filterLeaderboardCategorySelect.addEventListener("change", triggerLeaderboardFilter);
+    }
+
+    // Wire Leaderboard Type Switcher (Monthly vs Day)
+    const btnMonth = document.getElementById("leaderboardTypeMonth");
+    const btnDay = document.getElementById("leaderboardTypeDay");
+
+    if (btnMonth && btnDay) {
+      btnMonth.addEventListener("click", () => {
+        leaderboardType = "monthly";
+        btnMonth.classList.add("active");
+        btnDay.classList.remove("active");
+        triggerLeaderboardFilter();
+      });
+
+      btnDay.addEventListener("click", () => {
+        leaderboardType = "day";
+        btnDay.classList.add("active");
+        btnMonth.classList.remove("active");
+        triggerLeaderboardFilter();
+      });
     }
 
     // Initial fetch
