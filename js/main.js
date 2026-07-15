@@ -162,134 +162,207 @@ async function init() {
   const view = getQueryParam('view');
   const isProgressView = (view === 'progress' || view === 'report');
 
-  if (empId && isProgressView) {
-    // Show loading state
-    loadingCard.style.display = 'flex';
+  if (isProgressView) {
+    loadingCard.style.display = 'none';
     formContainer.style.display = 'none';
+    const loginCard = document.getElementById('employeeLoginCard');
+    loginCard.style.display = 'block';
 
-    try {
-      const { employees, feedbacks } = await loadAllData();
-      
-      const emp = employees.find(e => e.employeeId === empId);
-      if (!emp) {
-        showError(`Employee with ID "${empId}" was not found.`);
-        return;
-      }
+    const loginForm = document.getElementById('employeeLoginForm');
+    const loginNameInput = document.getElementById('empLoginName');
+    const loginPasswordInput = document.getElementById('empLoginPassword');
+    const loginError = document.getElementById('empLoginError');
 
-      const range = getActiveDateRange();
-
-      // Filter feedbacks for this cycle
-      const currentFeedbacks = feedbacks.filter(f => {
-        if (!f.createdAt) return false;
-        const d = f.createdAt.toDate ? f.createdAt.toDate() : new Date(f.createdAt);
-        return d >= range.start && d <= range.end;
-      });
-
-      const empStats = {};
-      employees.forEach(e => {
-        empStats[e.employeeId] = { count: 0, sum: 0 };
-        currentFeedbacks.forEach(f => {
-          if (f.employeeId === e.employeeId || f.counter === e.name) {
-            empStats[e.employeeId].count++;
-            empStats[e.employeeId].sum += f.rating;
+    // Pre-fill name if empId is provided in URL
+    if (empId) {
+      try {
+        let employeeData = null;
+        let fallback = false;
+        try {
+          const docRef = doc(db, "employees", empId);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            employeeData = docSnap.data();
+          } else {
+            fallback = true;
           }
-        });
-      });
+        } catch (err) {
+          fallback = true;
+        }
 
-      const ranked = employees.map(e => {
-        const stats = empStats[e.employeeId] || { count: 0, sum: 0 };
-        const custAvg = stats.count ? stats.sum / stats.count : 0;
-        const hasValidKpi = isKpiValidForRange(e.kpiUpdatedAt, range);
-        const { kpiAvg, penalty } = calculateKpi(e, hasValidKpi);
-        const finalScore = getBlendedScore(kpiAvg, penalty, custAvg, stats.count, hasValidKpi);
-        return { employeeId: e.employeeId, custAvg, kpiAvg, finalScore, reviewsCount: stats.count };
-      });
+        if (fallback) {
+          const res = await fetch(`/api/employees`);
+          if (res.ok) {
+            const list = await res.json();
+            const emp = list.find(e => e.employeeId === empId);
+            if (emp) employeeData = emp;
+          }
+        }
 
-      ranked.sort((a, b) => {
-        if (b.reviewsCount !== a.reviewsCount) return b.reviewsCount - a.reviewsCount;
-        if (b.custAvg !== a.custAvg) return b.custAvg - a.custAvg;
-        return b.finalScore - a.finalScore;
-      });
-
-      const rankIdx = ranked.findIndex(r => r.employeeId === empId);
-      const rank = rankIdx !== -1 ? rankIdx + 1 : "-";
-
-      const stats = empStats[emp.employeeId] || { count: 0, sum: 0 };
-      const custAvg = stats.count ? stats.sum / stats.count : 0;
-      const hasValidKpi = isKpiValidForRange(emp.kpiUpdatedAt, range);
-      const { kpiAvg, penalty } = calculateKpi(emp, hasValidKpi);
-      const finalScore = getBlendedScore(kpiAvg, penalty, custAvg, stats.count, hasValidKpi);
-
-      // Render the progress view fields
-      document.getElementById('progressName').textContent = emp.name;
-      document.getElementById('progressRole').textContent = emp.category || 'Sales';
-      document.getElementById('progressRank').textContent = `#${rank}`;
-      document.getElementById('progressScore').textContent = `${finalScore.toFixed(2)} / 10`;
-      document.getElementById('progressPenalty').textContent = penalty.toFixed(1);
-      document.getElementById('progressReviewsCount').textContent = stats.count;
-      document.getElementById('progressAverageRating').textContent = `${custAvg.toFixed(2)} / 5.0`;
-
-      // Deductions
-      const deductionsBox = document.getElementById('progressDeductionsBox');
-      const penaltyCommentsEl = document.getElementById('progressPenaltyComments');
-      if (hasValidKpi && emp.penaltyComments) {
-        penaltyCommentsEl.textContent = emp.penaltyComments;
-        deductionsBox.style.display = 'block';
-      } else {
-        deductionsBox.style.display = 'none';
+        if (employeeData) {
+          loginNameInput.value = employeeData.name;
+        }
+      } catch (err) {
+        console.warn("Failed to pre-fill name:", err);
       }
-
-      // Detailed KPIs Table
-      const progressKpiBody = document.getElementById('progressKpiBody');
-      progressKpiBody.innerHTML = '';
-      
-      const addProgressKpiRow = (metricName, scoreVal) => {
-        const numVal = (hasValidKpi && scoreVal !== undefined) ? Number(scoreVal) : 10.0;
-        const starsCount = Math.round(numVal / 2);
-        const stars = '★'.repeat(starsCount) + '☆'.repeat(5 - starsCount);
-        
-        const row = document.createElement('tr');
-        row.style.borderBottom = '0.5px solid var(--color-border)';
-        row.innerHTML = `
-          <td style="padding: 0.5rem 0; color: var(--color-text-primary); font-weight: 500;">${metricName}</td>
-          <td style="padding: 0.5rem 0; text-align: right; font-weight: 700; color: var(--color-primary);">
-            <span style="font-size: 0.75rem; color: var(--color-text-secondary); margin-right: 0.4rem; font-weight: normal;">${stars}</span>
-            ${numVal.toFixed(1)}
-          </td>
-        `;
-        progressKpiBody.appendChild(row);
-      };
-
-      addProgressKpiRow("Discipline", emp.discipline);
-      addProgressKpiRow("Attendance", emp.attendance);
-
-      const normCategory = getNormalizedCategory(emp.category);
-      if (normCategory === "Sales") {
-        addProgressKpiRow("Customer Handling", emp.customerHandling);
-        addProgressKpiRow("Billing Accuracy", emp.billingAccuracy);
-        addProgressKpiRow("Independent Handling", emp.independentHandling);
-        addProgressKpiRow("Follow-up & Reporting", emp.followUpReport);
-        addProgressKpiRow("Customer Satisfaction", emp.customerSatisfaction);
-        addProgressKpiRow("Cleanliness", emp.cleanliness);
-      } else if (normCategory === "Store") {
-        addProgressKpiRow("Picking Accuracy", emp.pickingAccuracy);
-        addProgressKpiRow("Stock Placement/Sorting", emp.stockSorting);
-        addProgressKpiRow("Material Security", emp.materialSecurity);
-        addProgressKpiRow("Cleanliness & Maintenance", emp.storeCleanliness);
-      } else if (normCategory === "Admin") {
-        addProgressKpiRow("Billing & Tax Accuracy", emp.billingTaxAccuracy);
-        addProgressKpiRow("Payment Follow-up", emp.paymentFollowUp);
-        addProgressKpiRow("Filing & Bookkeeping", emp.filingBookkeeping);
-        addProgressKpiRow("Office Decorum", emp.officeDecorum);
-      }
-
-      loadingCard.style.display = 'none';
-      document.getElementById('employeeProgressCard').style.display = 'block';
-
-    } catch (err) {
-      console.error("Error loading progress view:", err);
-      showError("Could not retrieve employee progress reports. Please try again later.");
     }
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      loginError.style.display = 'none';
+      
+      const enteredName = loginNameInput.value.trim();
+      const enteredPass = loginPasswordInput.value.trim();
+
+      const submitBtn = loginForm.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Verifying...';
+
+      try {
+        const { employees, feedbacks } = await loadAllData();
+        
+        // Find employee by name (case-insensitive and trimmed)
+        const emp = employees.find(e => e.name.trim().toLowerCase() === enteredName.toLowerCase());
+        
+        if (!emp) {
+          loginError.style.display = 'block';
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+          return;
+        }
+
+        // Expected password: name + '123' (case-insensitive name + '123')
+        const expectedPass = emp.name.trim().toLowerCase() + '123';
+        
+        if (enteredPass.toLowerCase() !== expectedPass) {
+          loginError.style.display = 'block';
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+          return;
+        }
+
+        // Successfully verified! Calculate progress report card.
+        const range = getActiveDateRange();
+
+        // Filter feedbacks for this cycle
+        const currentFeedbacks = feedbacks.filter(f => {
+          if (!f.createdAt) return false;
+          const d = f.createdAt.toDate ? f.createdAt.toDate() : new Date(f.createdAt);
+          return d >= range.start && d <= range.end;
+        });
+
+        const empStats = {};
+        employees.forEach(e => {
+          empStats[e.employeeId] = { count: 0, sum: 0 };
+          currentFeedbacks.forEach(f => {
+            if (f.employeeId === e.employeeId || f.counter === e.name) {
+              empStats[e.employeeId].count++;
+              empStats[e.employeeId].sum += f.rating;
+            }
+          });
+        });
+
+        const ranked = employees.map(e => {
+          const stats = empStats[e.employeeId] || { count: 0, sum: 0 };
+          const custAvg = stats.count ? stats.sum / stats.count : 0;
+          const hasValidKpi = isKpiValidForRange(e.kpiUpdatedAt, range);
+          const { kpiAvg, penalty } = calculateKpi(e, hasValidKpi);
+          const finalScore = getBlendedScore(kpiAvg, penalty, custAvg, stats.count, hasValidKpi);
+          return { employeeId: e.employeeId, custAvg, kpiAvg, finalScore, reviewsCount: stats.count };
+        });
+
+        ranked.sort((a, b) => {
+          if (b.reviewsCount !== a.reviewsCount) return b.reviewsCount - a.reviewsCount;
+          if (b.custAvg !== a.custAvg) return b.custAvg - a.custAvg;
+          return b.finalScore - a.finalScore;
+        });
+
+        const rankIdx = ranked.findIndex(r => r.employeeId === emp.employeeId);
+        const rank = rankIdx !== -1 ? rankIdx + 1 : "-";
+
+        const stats = empStats[emp.employeeId] || { count: 0, sum: 0 };
+        const custAvg = stats.count ? stats.sum / stats.count : 0;
+        const hasValidKpi = isKpiValidForRange(emp.kpiUpdatedAt, range);
+        const { kpiAvg, penalty } = calculateKpi(emp, hasValidKpi);
+        const finalScore = getBlendedScore(kpiAvg, penalty, custAvg, stats.count, hasValidKpi);
+
+        // Render the progress view fields
+        document.getElementById('progressName').textContent = emp.name;
+        document.getElementById('progressRole').textContent = emp.category || 'Sales';
+        document.getElementById('progressRank').textContent = `#${rank}`;
+        document.getElementById('progressScore').textContent = `${finalScore.toFixed(2)} / 10`;
+        document.getElementById('progressPenalty').textContent = penalty.toFixed(1);
+        document.getElementById('progressReviewsCount').textContent = stats.count;
+        document.getElementById('progressAverageRating').textContent = `${custAvg.toFixed(2)} / 5.0`;
+
+        // Deductions
+        const deductionsBox = document.getElementById('progressDeductionsBox');
+        const penaltyCommentsEl = document.getElementById('progressPenaltyComments');
+        if (hasValidKpi && emp.penaltyComments) {
+          penaltyCommentsEl.textContent = emp.penaltyComments;
+          deductionsBox.style.display = 'block';
+        } else {
+          deductionsBox.style.display = 'none';
+        }
+
+        // Detailed KPIs Table
+        const progressKpiBody = document.getElementById('progressKpiBody');
+        progressKpiBody.innerHTML = '';
+        
+        const addProgressKpiRow = (metricName, scoreVal) => {
+          const numVal = (hasValidKpi && scoreVal !== undefined) ? Number(scoreVal) : 10.0;
+          const starsCount = Math.round(numVal / 2);
+          const stars = '★'.repeat(starsCount) + '☆'.repeat(5 - starsCount);
+          
+          const row = document.createElement('tr');
+          row.style.borderBottom = '0.5px solid var(--color-border)';
+          row.innerHTML = `
+            <td style="padding: 0.5rem 0; color: var(--color-text-primary); font-weight: 500;">${metricName}</td>
+            <td style="padding: 0.5rem 0; text-align: right; font-weight: 700; color: var(--color-primary);">
+              <span style="font-size: 0.75rem; color: var(--color-text-secondary); margin-right: 0.4rem; font-weight: normal;">${stars}</span>
+              ${numVal.toFixed(1)}
+            </td>
+          `;
+          progressKpiBody.appendChild(row);
+        };
+
+        addProgressKpiRow("Discipline", emp.discipline);
+        addProgressKpiRow("Attendance", emp.attendance);
+
+        const normCategory = getNormalizedCategory(emp.category);
+        if (normCategory === "Sales") {
+          addProgressKpiRow("Customer Handling", emp.customerHandling);
+          addProgressKpiRow("Billing Accuracy", emp.billingAccuracy);
+          addProgressKpiRow("Independent Handling", emp.independentHandling);
+          addProgressKpiRow("Follow-up & Reporting", emp.followUpReport);
+          addProgressKpiRow("Customer Satisfaction", emp.customerSatisfaction);
+          addProgressKpiRow("Cleanliness", emp.cleanliness);
+        } else if (normCategory === "Store") {
+          addProgressKpiRow("Picking Accuracy", emp.pickingAccuracy);
+          addProgressKpiRow("Stock Placement/Sorting", emp.stockSorting);
+          addProgressKpiRow("Material Security", emp.materialSecurity);
+          addProgressKpiRow("Cleanliness & Maintenance", emp.storeCleanliness);
+        } else if (normCategory === "Admin") {
+          addProgressKpiRow("Billing & Tax Accuracy", emp.billingTaxAccuracy);
+          addProgressKpiRow("Payment Follow-up", emp.paymentFollowUp);
+          addProgressKpiRow("Filing & Bookkeeping", emp.filingBookkeeping);
+          addProgressKpiRow("Office Decorum", emp.officeDecorum);
+        }
+
+        loadingCard.style.display = 'none';
+        loginCard.style.display = 'none';
+        document.getElementById('employeeProgressCard').style.display = 'block';
+
+      } catch (err) {
+        console.error("Verification failed:", err);
+        loginError.textContent = "An error occurred. Please try again later.";
+        loginError.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+      }
+    });
+
     return;
   }
 
