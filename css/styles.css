@@ -1800,6 +1800,19 @@ textarea {
 
 /* ==================== Print Styles ==================== */
 @media print {
+  :root {
+    --color-bg-dark: #ffffff !important;
+    --color-bg-panel: #ffffff !important;
+    --color-bg-card: #ffffff !important;
+    --color-bg-drawer: #ffffff !important;
+    --color-bg-segmented: #f2f2f7 !important;
+
+    --color-primary: #ea580c !important;
+    --color-text-primary: #000000 !important;
+    --color-text-secondary: #475569 !important;
+    --color-border: #cbd5e1 !important;
+  }
+
   html, body {
     background: #ffffff !important;
     color: #000000 !important;
@@ -1810,6 +1823,13 @@ textarea {
     height: auto !important;
     overflow: visible !important;
     position: static !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* Hide all top-level body children except the report card modal */
@@ -1883,16 +1903,11 @@ textarea {
 
   .report-card-container {
     background: #ffffff !important;
-    border: 2px solid #e2e8f0 !important;
-    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #000000 !important;
     box-shadow: none !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
-  }
-
-  .report-card-container * {
-    background: transparent !important;
-    color: #0f172a !important;
   }
 
   .report-card-container h1 {

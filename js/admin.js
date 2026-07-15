@@ -1207,7 +1207,7 @@ if (document.getElementById("dashboardSection")) {
         if (!empId || !empName) return;
 
         try {
-          if (db) {
+          if (useFirebase) {
             const empDocRef = doc(db, "employees", empId);
             const empDocSnap = await getDoc(empDocRef);
 
@@ -1286,7 +1286,17 @@ if (document.getElementById("dashboardSection")) {
 
           if (confirm(`Are you sure you want to delete employee "${empName}" (${empId})?`)) {
             try {
-              await deleteDoc(doc(db, "employees", empId));
+              if (useFirebase) {
+                await deleteDoc(doc(db, "employees", empId));
+              } else {
+                const res = await fetch(`/api/employees/${empId}`, {
+                  method: "DELETE"
+                });
+                if (!res.ok) {
+                  const errData = await res.json();
+                  throw new Error(errData.error || "Failed to delete employee");
+                }
+              }
               showToast("Employee removed successfully!");
               await refreshDashboardAndEmployees();
             } catch (err) {
@@ -2209,7 +2219,7 @@ if (document.getElementById("dashboardSection")) {
           }
 
           try {
-            if (db) {
+            if (useFirebase) {
               const empDocRef = doc(db, "employees", empId);
               await setDoc(empDocRef, {
                 ...updateData,
