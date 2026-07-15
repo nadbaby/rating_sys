@@ -316,11 +316,10 @@ async function init() {
           const stars = '★'.repeat(starsCount) + '☆'.repeat(5 - starsCount);
           
           const row = document.createElement('tr');
-          row.style.borderBottom = '0.5px solid var(--color-border)';
           row.innerHTML = `
-            <td style="padding: 0.5rem 0; color: var(--color-text-primary); font-weight: 500;">${metricName}</td>
-            <td style="padding: 0.5rem 0; text-align: right; font-weight: 700; color: var(--color-primary);">
-              <span style="font-size: 0.75rem; color: var(--color-text-secondary); margin-right: 0.4rem; font-weight: normal;">${stars}</span>
+            <td class="kpi-metric-name">${metricName}</td>
+            <td class="kpi-metric-score">
+              <span class="kpi-stars-preview">${stars}</span>
               ${numVal.toFixed(1)}
             </td>
           `;

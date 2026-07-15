@@ -4,8 +4,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Login - Feedback Portal</title>
-  <meta name="description" content="Admin login for feedback dashboard." />
+  <title>Portal Login - Feedback System</title>
+  <meta name="description" content="Sign in to access the admin dashboard or employee progress report." />
   <link rel="stylesheet" href="css/styles.css" />
   <script src="js/theme.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,8 +27,11 @@
   </header>
   <main class="container login-container">
     <section class="login-panel glass-panel" id="loginSection">
-      <h1>Admin Login</h1>
-      <form id="loginForm">
+      <h1>Portal Login</h1>
+      <p class="portal-subtitle" style="font-size: 0.85rem; color: var(--color-text-secondary); line-height: 1.4; margin-top: 0.35rem; text-align: center;">
+        Sign in to access the Admin Dashboard or Employee Progress Report.
+      </p>
+      <form id="loginForm" style="margin-top: 1.25rem;">
         <div class="form-group">
           <label for="email">Email or Employee Name</label>
           <input type="text" id="email" placeholder="admin@example.com or Employee Name" required />
@@ -39,7 +42,7 @@
         </div>
         <button type="submit" class="btn-primary">Sign In</button>
       </form>
-      <div id="loginError" class="error-message" style="display:none;">Invalid email or password.</div>
+      <div id="loginError" class="error-message" style="display:none; margin-top: 1rem; text-align: center;">Invalid email or password.</div>
     </section>
   </main>
   <script type="module" src="js/admin.js"></script>
