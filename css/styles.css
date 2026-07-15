@@ -1800,7 +1800,7 @@ textarea {
 
 /* ==================== Print Styles ==================== */
 @media print {
-  body {
+  html, body {
     background: #ffffff !important;
     color: #000000 !important;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
@@ -1808,74 +1808,71 @@ textarea {
     padding: 0 !important;
     width: 100% !important;
     height: auto !important;
+    overflow: visible !important;
+    position: static !important;
   }
 
-  header,
-  main,
-  #toast,
-  .modal-header,
-  .modal-actions,
-  .modal-close,
-  .tab-navigation,
-  .filter-section,
-  .stats-grid,
-  .recent-grid,
-  .no-print,
-  .close-btn,
-  .drawer-header {
+  /* Hide all top-level body children except the report card modal */
+  body > *:not(#reportCardModal) {
     display: none !important;
   }
 
-  .drawer-overlay {
-    display: none !important;
-  }
-
+  /* Reset modal overlay to flow naturally as a standard block container */
+  #reportCardModal,
   #reportCardModal.active {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;
-    height: auto !important;
-    background: #ffffff !important;
     display: block !important;
     visibility: visible !important;
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     opacity: 1 !important;
     pointer-events: none !important;
     padding: 0 !important;
     margin: 0 !important;
     box-shadow: none !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    z-index: 99999 !important;
+    z-index: auto !important;
   }
 
-  .drawer-content {
-    background: #ffffff !important;
-    color: #000000 !important;
-    box-shadow: none !important;
-    border: none !important;
+  /* Reset modal content to take full width and flow naturally */
+  #reportCardModal .drawer-content {
+    display: block !important;
+    visibility: visible !important;
+    position: static !important;
     width: 100% !important;
     max-width: 100% !important;
     height: auto !important;
+    transform: none !important;
+    border: none !important;
+    box-shadow: none !important;
     padding: 0 !important;
     margin: 0 !important;
-    transform: none !important;
-    display: block !important;
-    visibility: visible !important;
+    background: transparent !important;
   }
 
-  .drawer-body-scroll {
+  /* Make the print body scroll container visible and scroll-free */
+  #reportCardModal .drawer-body-scroll {
     overflow: visible !important;
     height: auto !important;
     max-height: none !important;
     flex: none !important;
   }
 
+  /* Make print area block-level and full width */
   #reportCardPrintArea {
     display: block !important;
     width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
+  }
+
+  /* Hide internal header, actions, and close buttons on print */
+  #reportCardModal .drawer-header,
+  #reportCardModal .no-print,
+  #reportCardModal .close-btn {
+    display: none !important;
   }
 
   .report-card-print-block {

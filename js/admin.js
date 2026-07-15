@@ -546,12 +546,15 @@ if (document.getElementById("dashboardSection")) {
       printArea.innerHTML = allHtml;
       modal.classList.add("active");
 
-      setTimeout(() => {
-        window.print();
-        if (printBtn) printBtn.style.display = "flex";
-        if (shareEmail) shareEmail.style.display = "flex";
-        if (shareWhatsapp) shareWhatsapp.style.display = "flex";
-      }, 500);
+      waitForImagesToLoad(printArea).then(() => {
+        setTimeout(() => {
+          window.print();
+          if (printBtn) printBtn.style.display = "flex";
+          if (shareEmail) shareEmail.style.display = "flex";
+          if (shareWhatsapp) shareWhatsapp.style.display = "flex";
+          modal.classList.remove("active");
+        }, 500);
+      });
     }
 
     // Render comparison chart
@@ -883,6 +886,19 @@ if (document.getElementById("dashboardSection")) {
       });
     }
 
+    // Helper to wait for images in a container to load before printing
+    function waitForImagesToLoad(container) {
+      const imgs = container.querySelectorAll("img");
+      const promises = Array.from(imgs).map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise(resolve => {
+          img.onload = resolve;
+          img.onerror = resolve;
+        });
+      });
+      return Promise.all(promises);
+    }
+
     // Print All QR Codes Sheet
     function printAllQRCodes() {
       if (cachedEmployees.length === 0) {
@@ -925,13 +941,16 @@ if (document.getElementById("dashboardSection")) {
       `;
       modal.classList.add("active");
 
-      setTimeout(() => {
-        window.print();
-        // Restore buttons
-        if (printBtn) printBtn.style.display = "flex";
-        if (shareEmail) shareEmail.style.display = "flex";
-        if (shareWhatsapp) shareWhatsapp.style.display = "flex";
-      }, 600);
+      waitForImagesToLoad(printArea).then(() => {
+        setTimeout(() => {
+          window.print();
+          // Restore buttons
+          if (printBtn) printBtn.style.display = "flex";
+          if (shareEmail) shareEmail.style.display = "flex";
+          if (shareWhatsapp) shareWhatsapp.style.display = "flex";
+          modal.classList.remove("active");
+        }, 500);
+      });
     }
 
     // Helper to render and show employee feedback reviews
