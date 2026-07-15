@@ -1517,6 +1517,23 @@ textarea {
   display: inline-block;
 }
 
+.kpi-badge-missing {
+  background: rgba(142, 142, 147, 0.08);
+  color: var(--color-text-secondary);
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.75rem;
+  display: inline-block;
+  border: 0.5px dashed var(--color-border);
+}
+
+.progress-bar-fill.excellent { background: #30d158; }
+.progress-bar-fill.good { background: #ea580c; }
+.progress-bar-fill.average { background: #ff9f0a; }
+.progress-bar-fill.warning { background: #ff453a; }
+.progress-bar-fill.pending { background: #8e8e93; }
+
 /* ==================== Animations ==================== */
 
 @keyframes spin {

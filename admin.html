@@ -58,42 +58,43 @@
         </div>
       </div>
 
+      <!-- Global Filter Section -->
+      <div class="filter-section card-dark" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem;">
+          <div class="filter-group">
+            <label for="dateFrom">From:</label>
+            <input type="date" id="dateFrom" />
+          </div>
+          <div class="filter-group">
+            <label for="dateTo">To:</label>
+            <input type="date" id="dateTo" />
+          </div>
+          <div class="filter-group">
+            <label for="cycleSelect">Review Cycle:</label>
+            <select id="cycleSelect" style="padding: 0.5rem 1rem; border-radius: 8px; background: var(--color-bg-card); color: var(--color-text-primary); border: 1px solid var(--color-border); font-size: 0.85rem; font-weight: 500;">
+              <option value="custom">Custom Range</option>
+              <option value="current-15" selected>Current 15 Days</option>
+              <option value="prev-15">Previous 15 Days</option>
+              <option value="current-month">Current Month</option>
+              <option value="prev-month">Previous Month</option>
+            </select>
+          </div>
+          <button id="applyFilter" class="btn-primary">Apply Filters</button>
+        </div>
+        <div class="filter-actions-group" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button id="btnExportCSV" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 0.35rem;">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 1rem; height: 1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            <span>Export CSV</span>
+          </button>
+          <button id="btnPrintAllReports" class="btn-primary" style="display: inline-flex; align-items: center; gap: 0.35rem;">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 1rem; height: 1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+            <span>Print All Reports</span>
+          </button>
+        </div>
+      </div>
+
       <!-- ================= Tab 1: Analytics Overview ================= -->
       <div id="statsTab" class="tab-content active">
-        <div class="filter-section card-dark" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
-          <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem;">
-            <div class="filter-group">
-              <label for="dateFrom">From:</label>
-              <input type="date" id="dateFrom" />
-            </div>
-            <div class="filter-group">
-              <label for="dateTo">To:</label>
-              <input type="date" id="dateTo" />
-            </div>
-            <div class="filter-group">
-              <label for="cycleSelect">Review Cycle:</label>
-              <select id="cycleSelect" style="padding: 0.5rem 1rem; border-radius: 8px; background: var(--color-bg-card); color: var(--color-text-primary); border: 1px solid var(--color-border); font-size: 0.85rem; font-weight: 500;">
-                <option value="custom">Custom Range</option>
-                <option value="current-15" selected>Current 15 Days</option>
-                <option value="prev-15">Previous 15 Days</option>
-                <option value="current-month">Current Month</option>
-                <option value="prev-month">Previous Month</option>
-              </select>
-            </div>
-            <button id="applyFilter" class="btn-primary">Apply Filters</button>
-          </div>
-          <div class="filter-actions-group" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-            <button id="btnExportCSV" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 0.35rem;">
-              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 1rem; height: 1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-              <span>Export CSV</span>
-            </button>
-            <button id="btnPrintAllReports" class="btn-primary" style="display: inline-flex; align-items: center; gap: 0.35rem;">
-              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 1rem; height: 1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-              <span>Print All Reports</span>
-            </button>
-          </div>
-        </div>
-
         <div id="attentionAlertWidget" class="attention-widget no-print" style="display: none; margin-top: 1.5rem; margin-bottom: 1.5rem;"></div>
 
         <div class="stats-grid">

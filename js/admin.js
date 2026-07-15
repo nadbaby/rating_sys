@@ -438,9 +438,9 @@ if (document.getElementById("dashboardSection")) {
       });
 
       ranked.sort((a, b) => {
-        if (b.finalScore !== a.finalScore) return b.finalScore - a.finalScore;
         if (b.reviewsCount !== a.reviewsCount) return b.reviewsCount - a.reviewsCount;
-        return b.pickedItems - a.pickedItems;
+        if (b.custAvg !== a.custAvg) return b.custAvg - a.custAvg;
+        return b.finalScore - a.finalScore;
       });
 
       const rankIdx = ranked.findIndex(r => r.employeeId === empId);
@@ -503,9 +503,9 @@ if (document.getElementById("dashboardSection")) {
       });
 
       ranked.sort((a, b) => {
-        if (b.finalScore !== a.finalScore) return b.finalScore - a.finalScore;
         if (b.reviewsCount !== a.reviewsCount) return b.reviewsCount - a.reviewsCount;
-        return b.pickedItems - a.pickedItems;
+        if (b.custAvg !== a.custAvg) return b.custAvg - a.custAvg;
+        return b.finalScore - a.finalScore;
       });
 
       let allHtml = "";
@@ -1113,16 +1113,39 @@ if (document.getElementById("dashboardSection")) {
 
     // Call init date filters immediately to default to current 15-day cycle
     initDateFilters();
+
+    function setDateRangeFilters(start, end, cycleValue = "custom") {
+      const dateFromInput = document.getElementById("dateFrom");
+      const dateToInput = document.getElementById("dateTo");
+      const cycleSelect = document.getElementById("cycleSelect");
+
+      const formatForInput = (d) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      };
+
+      if (dateFromInput) dateFromInput.value = formatForInput(start);
+      if (dateToInput) dateToInput.value = formatForInput(end);
+      if (cycleSelect) cycleSelect.value = cycleValue;
+    }
     
-    // Create and insert Export CSV button
-    const exportBtn = document.createElement("button");
-    exportBtn.className = "btn-secondary";
-    exportBtn.innerHTML = `
-      <svg class="tab-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-      Export CSV
-    `;
-    exportBtn.onclick = () => exportCSV();
-    applyFilterBtn.parentNode.appendChild(exportBtn);
+    // Wire Export CSV and Print All Buttons
+    const existingExportBtn = document.getElementById("btnExportCSV");
+    if (existingExportBtn) {
+      existingExportBtn.addEventListener("click", exportCSV);
+    }
+
+    const printAllReportsBtn = document.getElementById("btnPrintAllReports");
+    if (printAllReportsBtn) {
+      printAllReportsBtn.addEventListener("click", printAllReports);
+    }
+
+    const printAllQRCodesBtn = document.getElementById("btnPrintAllQRCodes");
+    if (printAllQRCodesBtn) {
+      printAllQRCodesBtn.addEventListener("click", printAllQRCodes);
+    }
 
     // Wire Logout Button
     const logoutBtn = document.getElementById("logoutBtn");
@@ -1648,16 +1671,33 @@ if (document.getElementById("dashboardSection")) {
         return;
       }
 
-      // Calculate local stats based on selected leaderboard period type (Monthly vs Day)
+      // Synchronize switcher buttons state with current filters
+      const range = getActiveDateRange();
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-      
       const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
       const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
+      const btnMonth = document.getElementById("leaderboardTypeMonth");
+      const btnDay = document.getElementById("leaderboardTypeDay");
+
+      if (btnMonth && btnDay) {
+        btnMonth.classList.remove("active");
+        btnDay.classList.remove("active");
+
+        const isToday = range.start.getTime() === startOfToday.getTime() && range.end.getTime() === endOfToday.getTime();
+        const isCurrentMonth = range.start.getTime() === startOfMonth.getTime() && range.end.getTime() === endOfMonth.getTime();
+
+        if (isToday) {
+          btnDay.classList.add("active");
+        } else if (isCurrentMonth) {
+          btnMonth.classList.add("active");
+        }
+      }
+
       // KPI validity range check
-      const kpiRange = { start: startOfMonth, end: endOfMonth };
+      const kpiRange = range;
 
       // Initialize stats map
       const leaderboardStats = {};
@@ -1665,17 +1705,12 @@ if (document.getElementById("dashboardSection")) {
         leaderboardStats[emp.employeeId] = { count: 0, sum: 0 };
       });
 
-      // Filter and pre-aggregate loaded feedback based on leaderboardType
+      // Filter and pre-aggregate loaded feedback based on active date range
       cachedFeedbacks.forEach(f => {
         const fDate = f.createdAt ? (f.createdAt.toDate ? f.createdAt.toDate() : new Date(f.createdAt)) : null;
         if (!fDate) return;
 
-        let matchesPeriod = false;
-        if (leaderboardType === "monthly") {
-          matchesPeriod = fDate >= startOfMonth && fDate <= endOfMonth;
-        } else if (leaderboardType === "day") {
-          matchesPeriod = fDate >= startOfToday && fDate <= endOfToday;
-        }
+        const matchesPeriod = fDate >= range.start && fDate <= range.end;
 
         if (matchesPeriod) {
           employees.forEach(emp => {
@@ -1721,15 +1756,15 @@ if (document.getElementById("dashboardSection")) {
         });
       }
 
-      // Sort by finalScore descending, then reviewsCount descending, then pickedItems descending
+      // Sort by reviewsCount descending, then custAvg descending, then finalScore descending
       ranked.sort((a, b) => {
-        if (b.finalScore !== a.finalScore) {
-          return b.finalScore - a.finalScore;
-        }
         if (b.reviewsCount !== a.reviewsCount) {
           return b.reviewsCount - a.reviewsCount;
         }
-        return b.pickedItems - a.pickedItems;
+        if (b.custAvg !== a.custAvg) {
+          return b.custAvg - a.custAvg;
+        }
+        return b.finalScore - a.finalScore;
       });
 
       if (ranked.length === 0) {
@@ -1794,24 +1829,35 @@ if (document.getElementById("dashboardSection")) {
         }
 
         const custAvgText = emp.custAvg ? emp.custAvg.toFixed(2) : "0.00";
-        const kpiAvgText = emp.hasValidKpi ? emp.kpiAvg.toFixed(2) : "—";
         const finalScoreText = emp.finalScore.toFixed(2);
         const percentage = Math.max(0, Math.min(100, (emp.finalScore / 10) * 100));
 
         let statusText = "Needs Imp.";
         let statusClass = "status-warning";
+        let progressClass = "warning";
         if (emp.finalScore === 0 && !emp.hasValidKpi && emp.reviewsCount === 0) {
           statusText = "No Evaluation";
           statusClass = "status-pending";
+          progressClass = "pending";
         } else if (emp.finalScore >= 9.0) {
           statusText = "Excellent";
           statusClass = "status-excellent";
+          progressClass = "excellent";
         } else if (emp.finalScore >= 7.0) {
           statusText = "Good";
           statusClass = "status-good";
+          progressClass = "good";
         } else if (emp.finalScore >= 5.0) {
           statusText = "Average";
           statusClass = "status-average";
+          progressClass = "average";
+        }
+
+        let kpiAvgHtml = "";
+        if (emp.hasValidKpi) {
+          kpiAvgHtml = `<span class="kpi-badge">${emp.kpiAvg.toFixed(2)}</span>`;
+        } else {
+          kpiAvgHtml = `<span class="kpi-badge-missing" title="No KPI evaluation updated in this cycle">Pending Evaluation</span>`;
         }
 
         let catBadgeColor = "rgba(234, 88, 12, 0.15)";
@@ -1833,7 +1879,7 @@ if (document.getElementById("dashboardSection")) {
           <td><span class="emp-id-badge">${escapeHtml(emp.employeeId)}</span></td>
           <td>${catBadgeHtml}</td>
           <td><span style="font-weight: 500;">${custAvgText}</span></td>
-          <td><span class="kpi-badge">${kpiAvgText}</span></td>
+          <td>${kpiAvgHtml}</td>
           <td><span style="color: ${emp.penalty > 0 ? '#f87171' : 'var(--color-text-secondary)'}; font-weight: 600;">${emp.penalty > 0 ? `-${emp.penalty.toFixed(1)}` : '0.0'}</span></td>
           <td><span style="font-weight: 800; color: var(--color-primary);">${finalScoreText}</span></td>
           <td>
@@ -1843,7 +1889,7 @@ if (document.getElementById("dashboardSection")) {
                 <span style="font-size: 0.75rem; color: var(--color-text-secondary); font-weight: 600;">${percentage.toFixed(0)}%</span>
               </div>
               <div class="progress-bar-container">
-                <div class="progress-bar-fill" style="width: ${percentage}%"></div>
+                <div class="progress-bar-fill ${progressClass}" style="width: ${percentage}%"></div>
               </div>
             </div>
           </td>
@@ -2282,17 +2328,17 @@ if (document.getElementById("dashboardSection")) {
 
     if (btnMonth && btnDay) {
       btnMonth.addEventListener("click", () => {
-        leaderboardType = "monthly";
-        btnMonth.classList.add("active");
-        btnDay.classList.remove("active");
-        triggerLeaderboardFilter();
+        const now = new Date();
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        setDateRangeFilters(start, end, "current-month");
+        refreshDashboardAndEmployees();
       });
 
       btnDay.addEventListener("click", () => {
-        leaderboardType = "day";
-        btnDay.classList.add("active");
-        btnMonth.classList.remove("active");
-        triggerLeaderboardFilter();
+        const now = new Date();
+        setDateRangeFilters(now, now, "custom");
+        refreshDashboardAndEmployees();
       });
     }
 
