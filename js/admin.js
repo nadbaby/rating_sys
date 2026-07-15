@@ -78,6 +78,53 @@ if (document.getElementById("loginForm")) {
     e.preventDefault();
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
+
+    const isEmployeeAttempt = !email.includes("@");
+
+    if (isEmployeeAttempt) {
+      // Treat email field as employee name
+      const empName = email;
+      let employees = [];
+
+      // Try reading from Firebase
+      try {
+        const querySnapshot = await getDocs(collection(db, "employees"));
+        querySnapshot.forEach((doc) => {
+          employees.push({ id: doc.id, ...doc.data() });
+        });
+      } catch (err) {
+        console.warn("Firestore employee fetch failed during login, trying local API:", err);
+      }
+
+      // Try local API fallback
+      if (employees.length === 0) {
+        try {
+          const res = await fetch("/api/employees");
+          if (res.ok) {
+            employees = await res.json();
+          }
+        } catch (err) {
+          console.error("Local API fetch failed during login:", err);
+        }
+      }
+
+      // Look up employee by name (case-insensitive and trimmed)
+      const emp = employees.find(e => e.name.trim().toLowerCase() === empName.toLowerCase());
+      if (emp) {
+        const expectedPass = emp.name.trim().toLowerCase() + '123';
+        if (password.trim().toLowerCase() === expectedPass) {
+          // Redirect them to index.html with view=progress and their employeeId
+          let baseUrl = window.location.href.split('?')[0];
+          baseUrl = baseUrl.replace('login.html', 'index.html');
+          window.location.href = `${baseUrl}?empId=${encodeURIComponent(emp.employeeId || emp.id)}&view=progress`;
+          return;
+        }
+      }
+
+      errorDiv.style.display = "block";
+      errorDiv.textContent = "Invalid employee name or password.";
+      return;
+    }
     
     let loggedIn = false;
     
@@ -115,6 +162,7 @@ if (document.getElementById("loginForm")) {
       window.location.href = "admin.html";
     } else {
       errorDiv.style.display = "block";
+      errorDiv.textContent = "Invalid email or password.";
     }
   });
 }
