@@ -2,7 +2,9 @@
 // Handles feedback form submission and stores data in Firestore.
 
 import { db } from "./firebase-init.js";
-import { doc, getDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+import { 
+  doc, getDoc, collection, addDoc, serverTimestamp, getDocs, query 
+} from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 
 // Helper to get query param value
 function getQueryParam(param) {
@@ -29,9 +31,267 @@ const ratingDesc = document.getElementById('ratingDesc');
 let currentEmployeeId = null;
 let currentCounterName = 'Unknown Counter';
 
+// Helper functions for KPI & Blended Score calculations
+function getNormalizedCategory(categoryName) {
+  const cat = (categoryName || "Sales").toLowerCase();
+  if (cat.includes("store") || cat.includes("godown") || cat.includes("dispatch") || cat.includes("warehouse")) {
+    return "Store";
+  }
+  if (cat.includes("admin") || cat.includes("office") || cat.includes("account") || cat.includes("billing")) {
+    return "Admin";
+  }
+  return "Sales";
+}
+
+function isKpiValidForRange(kpiUpdatedAt, range) {
+  if (!kpiUpdatedAt) return false;
+  const d = kpiUpdatedAt.toDate ? kpiUpdatedAt.toDate() : new Date(kpiUpdatedAt);
+  if (isNaN(d.getTime())) return false;
+  return d >= range.start && d <= range.end;
+}
+
+function calculateKpi(emp, hasValidKpi) {
+  if (!hasValidKpi) {
+    return { kpiAvg: 0.0, finalScore: 0.0, penalty: 0.0 };
+  }
+  const category = getNormalizedCategory(emp.category);
+  const discipline = emp.discipline !== undefined ? emp.discipline : 10.0;
+  const attendance = emp.attendance !== undefined ? emp.attendance : 10.0;
+  
+  let sum = discipline + attendance;
+  let count = 2;
+
+  if (category === "Sales") {
+    sum += emp.customerHandling !== undefined ? emp.customerHandling : 10.0;
+    sum += emp.billingAccuracy !== undefined ? emp.billingAccuracy : 10.0;
+    sum += emp.independentHandling !== undefined ? emp.independentHandling : 10.0;
+    sum += emp.followUpReport !== undefined ? emp.followUpReport : 10.0;
+    sum += emp.customerSatisfaction !== undefined ? emp.customerSatisfaction : 10.0;
+    sum += emp.cleanliness !== undefined ? emp.cleanliness : 10.0;
+    count += 6;
+  } else if (category === "Store") {
+    sum += emp.pickingAccuracy !== undefined ? emp.pickingAccuracy : 10.0;
+    sum += emp.stockSorting !== undefined ? emp.stockSorting : 10.0;
+    sum += emp.materialSecurity !== undefined ? emp.materialSecurity : 10.0;
+    sum += emp.storeCleanliness !== undefined ? emp.storeCleanliness : 10.0;
+    count += 4;
+  } else if (category === "Admin") {
+    sum += emp.billingTaxAccuracy !== undefined ? emp.billingTaxAccuracy : 10.0;
+    sum += emp.paymentFollowUp !== undefined ? emp.paymentFollowUp : 10.0;
+    sum += emp.filingBookkeeping !== undefined ? emp.filingBookkeeping : 10.0;
+    sum += emp.officeDecorum !== undefined ? emp.officeDecorum : 10.0;
+    count += 4;
+  }
+
+  const kpiAvg = sum / count;
+  const penalty = emp.penalty !== undefined ? emp.penalty : 0.0;
+  const finalScore = Math.max(0, kpiAvg - penalty);
+
+  return { kpiAvg, finalScore, penalty };
+}
+
+function getBlendedScore(kpiAvg, penalty, custAvg, reviewsCount, hasValidKpi) {
+  let score = 0;
+  if (hasValidKpi) {
+    if (reviewsCount > 0) {
+      score = (custAvg * 2) * 0.4 + kpiAvg * 0.6 - penalty;
+    } else {
+      score = kpiAvg - penalty;
+    }
+  } else {
+    if (reviewsCount > 0) {
+      score = (custAvg * 2) - penalty;
+    } else {
+      score = 0.0;
+    }
+  }
+  return Math.max(0, Number(score));
+}
+
+function getActiveDateRange() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  const date = today.getDate();
+  
+  let start, end;
+  if (date <= 15) {
+    start = new Date(year, month, 1, 0, 0, 0);
+    end = new Date(year, month, 15, 23, 59, 59, 999);
+  } else {
+    start = new Date(year, month, 16, 0, 0, 0);
+    end = new Date(year, month + 1, 0, 23, 59, 59, 999);
+  }
+  return { start, end };
+}
+
+async function loadAllData() {
+  let employees = [];
+  let feedbacks = [];
+  let useFb = true;
+
+  try {
+    const empSnap = await getDocs(query(collection(db, "employees")));
+    empSnap.forEach(doc => employees.push(doc.data()));
+    
+    const fbSnap = await getDocs(query(collection(db, "feedback")));
+    fbSnap.forEach(doc => feedbacks.push({ id: doc.id, ...doc.data() }));
+  } catch (err) {
+    console.warn("Firestore data load failed, using local API:", err);
+    useFb = false;
+  }
+
+  if (!useFb || employees.length === 0) {
+    try {
+      const empRes = await fetch("/api/employees");
+      if (empRes.ok) employees = await empRes.json();
+      
+      const fbRes = await fetch("/api/feedback");
+      if (fbRes.ok) feedbacks = await fbRes.json();
+    } catch (err) {
+      console.error("Local API fetch failed:", err);
+    }
+  }
+
+  return { employees, feedbacks };
+}
+
 async function init() {
   const empId = getQueryParam('empId');
   const counterParam = getQueryParam('counter');
+  const view = getQueryParam('view');
+  const isProgressView = (view === 'progress' || view === 'report');
+
+  if (empId && isProgressView) {
+    // Show loading state
+    loadingCard.style.display = 'flex';
+    formContainer.style.display = 'none';
+
+    try {
+      const { employees, feedbacks } = await loadAllData();
+      
+      const emp = employees.find(e => e.employeeId === empId);
+      if (!emp) {
+        showError(`Employee with ID "${empId}" was not found.`);
+        return;
+      }
+
+      const range = getActiveDateRange();
+
+      // Filter feedbacks for this cycle
+      const currentFeedbacks = feedbacks.filter(f => {
+        if (!f.createdAt) return false;
+        const d = f.createdAt.toDate ? f.createdAt.toDate() : new Date(f.createdAt);
+        return d >= range.start && d <= range.end;
+      });
+
+      const empStats = {};
+      employees.forEach(e => {
+        empStats[e.employeeId] = { count: 0, sum: 0 };
+        currentFeedbacks.forEach(f => {
+          if (f.employeeId === e.employeeId || f.counter === e.name) {
+            empStats[e.employeeId].count++;
+            empStats[e.employeeId].sum += f.rating;
+          }
+        });
+      });
+
+      const ranked = employees.map(e => {
+        const stats = empStats[e.employeeId] || { count: 0, sum: 0 };
+        const custAvg = stats.count ? stats.sum / stats.count : 0;
+        const hasValidKpi = isKpiValidForRange(e.kpiUpdatedAt, range);
+        const { kpiAvg, penalty } = calculateKpi(e, hasValidKpi);
+        const finalScore = getBlendedScore(kpiAvg, penalty, custAvg, stats.count, hasValidKpi);
+        return { employeeId: e.employeeId, custAvg, kpiAvg, finalScore, reviewsCount: stats.count };
+      });
+
+      ranked.sort((a, b) => {
+        if (b.reviewsCount !== a.reviewsCount) return b.reviewsCount - a.reviewsCount;
+        if (b.custAvg !== a.custAvg) return b.custAvg - a.custAvg;
+        return b.finalScore - a.finalScore;
+      });
+
+      const rankIdx = ranked.findIndex(r => r.employeeId === empId);
+      const rank = rankIdx !== -1 ? rankIdx + 1 : "-";
+
+      const stats = empStats[emp.employeeId] || { count: 0, sum: 0 };
+      const custAvg = stats.count ? stats.sum / stats.count : 0;
+      const hasValidKpi = isKpiValidForRange(emp.kpiUpdatedAt, range);
+      const { kpiAvg, penalty } = calculateKpi(emp, hasValidKpi);
+      const finalScore = getBlendedScore(kpiAvg, penalty, custAvg, stats.count, hasValidKpi);
+
+      // Render the progress view fields
+      document.getElementById('progressName').textContent = emp.name;
+      document.getElementById('progressRole').textContent = emp.category || 'Sales';
+      document.getElementById('progressRank').textContent = `#${rank}`;
+      document.getElementById('progressScore').textContent = `${finalScore.toFixed(2)} / 10`;
+      document.getElementById('progressPenalty').textContent = penalty.toFixed(1);
+      document.getElementById('progressReviewsCount').textContent = stats.count;
+      document.getElementById('progressAverageRating').textContent = `${custAvg.toFixed(2)} / 5.0`;
+
+      // Deductions
+      const deductionsBox = document.getElementById('progressDeductionsBox');
+      const penaltyCommentsEl = document.getElementById('progressPenaltyComments');
+      if (hasValidKpi && emp.penaltyComments) {
+        penaltyCommentsEl.textContent = emp.penaltyComments;
+        deductionsBox.style.display = 'block';
+      } else {
+        deductionsBox.style.display = 'none';
+      }
+
+      // Detailed KPIs Table
+      const progressKpiBody = document.getElementById('progressKpiBody');
+      progressKpiBody.innerHTML = '';
+      
+      const addProgressKpiRow = (metricName, scoreVal) => {
+        const numVal = (hasValidKpi && scoreVal !== undefined) ? Number(scoreVal) : 10.0;
+        const starsCount = Math.round(numVal / 2);
+        const stars = '★'.repeat(starsCount) + '☆'.repeat(5 - starsCount);
+        
+        const row = document.createElement('tr');
+        row.style.borderBottom = '0.5px solid var(--color-border)';
+        row.innerHTML = `
+          <td style="padding: 0.5rem 0; color: var(--color-text-primary); font-weight: 500;">${metricName}</td>
+          <td style="padding: 0.5rem 0; text-align: right; font-weight: 700; color: var(--color-primary);">
+            <span style="font-size: 0.75rem; color: var(--color-text-secondary); margin-right: 0.4rem; font-weight: normal;">${stars}</span>
+            ${numVal.toFixed(1)}
+          </td>
+        `;
+        progressKpiBody.appendChild(row);
+      };
+
+      addProgressKpiRow("Discipline", emp.discipline);
+      addProgressKpiRow("Attendance", emp.attendance);
+
+      const normCategory = getNormalizedCategory(emp.category);
+      if (normCategory === "Sales") {
+        addProgressKpiRow("Customer Handling", emp.customerHandling);
+        addProgressKpiRow("Billing Accuracy", emp.billingAccuracy);
+        addProgressKpiRow("Independent Handling", emp.independentHandling);
+        addProgressKpiRow("Follow-up & Reporting", emp.followUpReport);
+        addProgressKpiRow("Customer Satisfaction", emp.customerSatisfaction);
+        addProgressKpiRow("Cleanliness", emp.cleanliness);
+      } else if (normCategory === "Store") {
+        addProgressKpiRow("Picking Accuracy", emp.pickingAccuracy);
+        addProgressKpiRow("Stock Placement/Sorting", emp.stockSorting);
+        addProgressKpiRow("Material Security", emp.materialSecurity);
+        addProgressKpiRow("Cleanliness & Maintenance", emp.storeCleanliness);
+      } else if (normCategory === "Admin") {
+        addProgressKpiRow("Billing & Tax Accuracy", emp.billingTaxAccuracy);
+        addProgressKpiRow("Payment Follow-up", emp.paymentFollowUp);
+        addProgressKpiRow("Filing & Bookkeeping", emp.filingBookkeeping);
+        addProgressKpiRow("Office Decorum", emp.officeDecorum);
+      }
+
+      loadingCard.style.display = 'none';
+      document.getElementById('employeeProgressCard').style.display = 'block';
+
+    } catch (err) {
+      console.error("Error loading progress view:", err);
+      showError("Could not retrieve employee progress reports. Please try again later.");
+    }
+    return;
+  }
 
   if (empId) {
     let employeeData = null;

@@ -94,6 +94,66 @@
         </form>
       </div>
 
+      <!-- Employee Progress View -->
+      <div id="employeeProgressCard" class="status-panel" style="display: none; text-align: left; padding: 1.5rem; width: 100%;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed var(--color-border); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+          <div>
+            <h2 id="progressName" style="margin: 0; font-size: 1.35rem; font-weight: 700; color: var(--color-primary);">Employee Name</h2>
+            <p id="progressRole" style="margin: 0.15rem 0 0 0; font-size: 0.8rem; color: var(--color-text-secondary); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Sales</p>
+          </div>
+          <div style="text-align: right;">
+            <div id="progressRank" style="font-size: 1.8rem; font-weight: 800; color: var(--color-text-primary);">#--</div>
+            <div style="font-size: 0.7rem; color: var(--color-text-secondary); text-transform: uppercase; font-weight: 600;">Rank</div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+          <div style="background: var(--color-bg-card); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border); text-align: center;">
+            <div style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase; margin-bottom: 0.25rem;">Final Blended Score</div>
+            <div id="progressScore" style="font-size: 1.6rem; font-weight: 800; color: var(--color-primary);">0.0 / 10</div>
+          </div>
+          <div style="background: var(--color-bg-card); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border); text-align: center;">
+            <div style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase; margin-bottom: 0.25rem;">Penalty Deductions</div>
+            <div id="progressPenalty" style="font-size: 1.6rem; font-weight: 800; color: var(--color-warning);">0.0</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <h4 style="font-size: 0.85rem; text-transform: uppercase; color: var(--color-primary); border-bottom: 0.5px solid var(--color-border); padding-bottom: 0.35rem; margin-bottom: 0.75rem; letter-spacing: 0.5px;">Detailed KPI Scores</h4>
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+            <thead>
+              <tr style="border-bottom: 0.5px solid var(--color-border); color: var(--color-text-secondary); text-align: left;">
+                <th style="padding: 0.4rem 0;">Metric</th>
+                <th style="padding: 0.4rem 0; text-align: right;">Score</th>
+              </tr>
+            </thead>
+            <tbody id="progressKpiBody">
+              <!-- KPI rows -->
+            </tbody>
+          </table>
+        </div>
+
+        <div id="progressDeductionsBox" style="background: rgba(239, 68, 68, 0.06); padding: 0.85rem; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.15); margin-bottom: 1.5rem; display: none;">
+          <h4 style="font-size: 0.8rem; text-transform: uppercase; color: var(--color-warning); margin: 0 0 0.35rem 0;">⚠️ Penalty Comments</h4>
+          <p id="progressPenaltyComments" style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0; font-style: italic;"></p>
+        </div>
+
+        <div style="background: var(--color-bg-card); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+          <div>
+            <span style="color: var(--color-text-secondary);">Customer Reviews:</span>
+            <strong id="progressReviewsCount" style="margin-left: 0.25rem;">0</strong>
+          </div>
+          <div>
+            <span style="color: var(--color-text-secondary);">Average Rating:</span>
+            <strong id="progressAverageRating" style="margin-left: 0.25rem; color: var(--color-accent);">0.00 / 5.0</strong>
+          </div>
+        </div>
+
+        <div style="margin-top: 1.5rem; text-align: center;">
+          <a href="login.html" class="btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; display: inline-block;">Back to Main Portal</a>
+        </div>
+      </div>
+
       <!-- Thank You Message -->
       <div class="thank-you" id="thankYouMessage" style="display:none;">
         <div class="success-icon-circle">
