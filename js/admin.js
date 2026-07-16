@@ -113,8 +113,6 @@ if (document.getElementById("loginForm")) {
       if (emp) {
         const expectedPass = emp.name.trim().toLowerCase() + '123';
         if (password.trim().toLowerCase() === expectedPass) {
-          // Set employee login session
-          sessionStorage.setItem("emp_logged_in_id", emp.employeeId || emp.id);
           // Redirect them to index.html with view=progress and their employeeId
           let baseUrl = window.location.href.split('?')[0];
           baseUrl = baseUrl.replace('login.html', 'index.html');
