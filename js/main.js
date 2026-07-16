@@ -32,11 +32,25 @@ let currentEmployeeId = null;
 let currentCounterName = 'Unknown Counter';
 let loggedEmployee = null;
 
+function parseDate(ts) {
+  if (!ts) return null;
+  if (ts.toDate && typeof ts.toDate === "function") {
+    return ts.toDate();
+  }
+  if (ts.seconds !== undefined) {
+    return new Date(ts.seconds * 1000 + Math.floor((ts.nanoseconds || 0) / 1000000));
+  }
+  if (ts._seconds !== undefined) {
+    return new Date(ts._seconds * 1000 + Math.floor((ts._nanoseconds || 0) / 1000000));
+  }
+  const d = new Date(ts);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 // Helper to format date to YYYY-MM-DD
 function formatDate(ts) {
-  if (!ts) return "N/A";
-  const d = ts.toDate ? ts.toDate() : new Date(ts);
-  if (isNaN(d.getTime())) return "N/A";
+  const d = parseDate(ts);
+  if (!d) return "N/A";
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
@@ -94,8 +108,8 @@ function getEmployeeSelectedDateRange() {
 
 function updateEmployeeProgressUI(emp, range, feedbacks, employees) {
   const currentFeedbacks = feedbacks.filter(f => {
-    if (!f.createdAt) return false;
-    const d = f.createdAt.toDate ? f.createdAt.toDate() : new Date(f.createdAt);
+    const d = parseDate(f.createdAt);
+    if (!d) return false;
     return d >= range.start && d <= range.end;
   });
 
@@ -281,9 +295,8 @@ function getNormalizedCategory(categoryName) {
 }
 
 function isKpiValidForRange(kpiUpdatedAt, range) {
-  if (!kpiUpdatedAt) return false;
-  const d = kpiUpdatedAt.toDate ? kpiUpdatedAt.toDate() : new Date(kpiUpdatedAt);
-  if (isNaN(d.getTime())) return false;
+  const d = parseDate(kpiUpdatedAt);
+  if (!d) return false;
   return d >= range.start && d <= range.end;
 }
 

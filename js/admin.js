@@ -7,11 +7,25 @@ import {
   collection, query, where, orderBy, getDocs, Timestamp, doc, getDoc, setDoc, deleteDoc, serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 
+function parseDate(ts) {
+  if (!ts) return null;
+  if (ts.toDate && typeof ts.toDate === "function") {
+    return ts.toDate();
+  }
+  if (ts.seconds !== undefined) {
+    return new Date(ts.seconds * 1000 + Math.floor((ts.nanoseconds || 0) / 1000000));
+  }
+  if (ts._seconds !== undefined) {
+    return new Date(ts._seconds * 1000 + Math.floor((ts._nanoseconds || 0) / 1000000));
+  }
+  const d = new Date(ts);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 // Helper to format date to YYYY-MM-DD
 function formatDate(ts) {
-  if (!ts) return "N/A";
-  const d = ts.toDate ? ts.toDate() : new Date(ts);
-  if (isNaN(d.getTime())) return "N/A";
+  const d = parseDate(ts);
+  if (!d) return "N/A";
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
@@ -1172,9 +1186,8 @@ if (document.getElementById("dashboardSection")) {
     }
 
     function isKpiValidForRange(kpiUpdatedAt, range) {
-      if (!kpiUpdatedAt) return false;
-      const d = kpiUpdatedAt.toDate ? kpiUpdatedAt.toDate() : new Date(kpiUpdatedAt);
-      if (isNaN(d.getTime())) return false;
+      const d = parseDate(kpiUpdatedAt);
+      if (!d) return false;
       return d >= range.start && d <= range.end;
     }
 
@@ -1544,12 +1557,20 @@ if (document.getElementById("dashboardSection")) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ employees })
           });
+          
+          // Fetch ALL feedbacks from Firestore for complete sync
+          const allFbSnap = await getDocs(collection(db, "feedback"));
+          const allFeedbacks = [];
+          allFbSnap.forEach((doc) => {
+            allFeedbacks.push({ id: doc.id, ...doc.data() });
+          });
+
           await fetch("/api/sync/feedback", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ feedbacks })
+            body: JSON.stringify({ feedbacks: allFeedbacks })
           });
-          console.log("Local database successfully synced with Firestore.");
+          console.log("Local database successfully synced with ALL Firestore feedbacks.");
         } catch (err) {
           console.warn("Failed to sync Firestore data locally:", err);
         }
@@ -1811,7 +1832,7 @@ if (document.getElementById("dashboardSection")) {
 
       // Filter and pre-aggregate loaded feedback based on active date range
       cachedFeedbacks.forEach(f => {
-        const fDate = f.createdAt ? (f.createdAt.toDate ? f.createdAt.toDate() : new Date(f.createdAt)) : null;
+        const fDate = parseDate(f.createdAt);
         if (!fDate) return;
 
         const matchesPeriod = fDate >= range.start && fDate <= range.end;
