@@ -243,7 +243,7 @@ if (document.getElementById("dashboardSection")) {
     observer.observe(document.documentElement, { attributes: true });
 
     // Helper to generate Report Card HTML content
-    function buildReportCardHtml(emp, rank, custAvg, kpiAvgVal, finalScore, penalty, pickedItems, performanceStatus, range, statsCount) {
+    function buildReportCardHtml(emp, rank, custAvg, kpiAvgVal, finalScore, penalty, pickedItems, indentNumbers, performanceStatus, range, statsCount) {
       const hasValidKpi = isKpiValidForRange(emp.kpiUpdatedAt, range);
       const startStr = formatDate(range.start);
       const endStr = formatDate(range.end);
@@ -251,16 +251,16 @@ if (document.getElementById("dashboardSection")) {
 
       // Detailed KPI rows
       let kpiRowsHtml = "";
-      const addMetricRow = (name, val) => {
-        const numVal = (hasValidKpi && val !== undefined) ? Number(val) : 10;
-        const starsCount = Math.round(numVal / 2);
-        const stars = "★".repeat(starsCount) + "☆".repeat(5 - starsCount);
+      const addMetricRow = (name, val, isCount = false) => {
+        const numVal = (hasValidKpi && val !== undefined) ? Number(val) : (isCount ? 0 : 10);
+        const starsCount = isCount ? 0 : Math.min(5, Math.max(0, Math.round(numVal / 2)));
+        const starsHtml = isCount ? "" : `<span style="font-size: 0.8rem; color: var(--color-text-secondary); margin-right: 0.5rem; font-weight: normal;">${"★".repeat(starsCount) + "☆".repeat(5 - starsCount)}</span>`;
+        const displayVal = isCount ? numVal.toString() : numVal.toFixed(1);
         kpiRowsHtml += `
           <tr style="border-bottom: 1px solid var(--color-border);">
             <td style="padding: 0.65rem 0; color: var(--color-text-primary); font-weight: 500;">${name}</td>
             <td style="padding: 0.65rem 0; text-align: right; font-weight: 700; color: var(--color-primary);">
-              <span style="font-size: 0.8rem; color: var(--color-text-secondary); margin-right: 0.5rem; font-weight: normal;">${stars}</span>
-              ${numVal.toFixed(1)}
+              ${starsHtml}${displayVal}
             </td>
           </tr>
         `;
@@ -277,19 +277,22 @@ if (document.getElementById("dashboardSection")) {
         addMetricRow("Follow-up & reporting", emp.followUpReport);
         addMetricRow("Customer Satisfaction", emp.customerSatisfaction);
         addMetricRow("Cleanliness & Hygiene", emp.cleanliness);
-        addMetricRow("15d Invoices Generated", emp.pickedItems);
+        addMetricRow("15d Invoices Generated", emp.pickedItems, true);
+        addMetricRow("Indents Created", indentNumbers, true);
       } else if (category === "Store") {
         addMetricRow("Picking Speed & Accuracy", emp.pickingAccuracy);
         addMetricRow("Stock Placement & Sorting", emp.stockSorting);
         addMetricRow("Material Security & Safety", emp.materialSecurity);
         addMetricRow("Cleanliness & Maintenance", emp.storeCleanliness);
-        addMetricRow("15d Picked Items Count", emp.pickedItems);
+        addMetricRow("15d Picked Items Count", emp.pickedItems, true);
+        addMetricRow("Indents Created", indentNumbers, true);
       } else if (category === "Admin") {
         addMetricRow("Billing & Taxation Accuracy", emp.billingTaxAccuracy);
         addMetricRow("Outstanding Payments Follow-up", emp.paymentFollowUp);
         addMetricRow("Filing & Bookkeeping", emp.filingBookkeeping);
         addMetricRow("Office Decorum & Cleanliness", emp.officeDecorum);
-        addMetricRow("15d Tasks Completed", emp.pickedItems);
+        addMetricRow("15d Tasks Completed", emp.pickedItems, true);
+        addMetricRow("Indents Created", indentNumbers, true);
       }
 
       const improvements = [];
@@ -514,6 +517,7 @@ if (document.getElementById("dashboardSection")) {
       const { kpiAvg, penalty } = calculateKpi(emp, hasValidKpi);
       const finalScore = getBlendedScore(kpiAvg, penalty, custAvg, stats.count, hasValidKpi);
       const pickedItems = (hasValidKpi && emp.pickedItems !== undefined) ? emp.pickedItems : 0;
+      const indentNumbers = (hasValidKpi && emp.indentNumbers !== undefined) ? emp.indentNumbers : 0;
 
       let performanceStatus = "Needs Imp.";
       if (finalScore === 0 && !hasValidKpi && stats.count === 0) performanceStatus = "No Evaluation";
@@ -521,14 +525,16 @@ if (document.getElementById("dashboardSection")) {
       else if (finalScore >= 7.0) performanceStatus = "Good";
       else if (finalScore >= 5.0) performanceStatus = "Average";
 
-      const html = buildReportCardHtml(emp, rank, custAvg, kpiAvg, finalScore, penalty, pickedItems, performanceStatus, range, stats.count);
+      const html = buildReportCardHtml(emp, rank, custAvg, kpiAvg, finalScore, penalty, pickedItems, indentNumbers, performanceStatus, range, stats.count);
       document.getElementById("reportCardPrintArea").innerHTML = html;
 
       // Ensure individual actions are visible
       const printBtn = document.getElementById("printReportCardBtn");
+      const downloadPdf = document.getElementById("downloadPdfBtn");
       const shareEmail = document.getElementById("shareEmailBtn");
       const shareWhatsapp = document.getElementById("shareWhatsappBtn");
       if (printBtn) printBtn.style.display = "flex";
+      if (downloadPdf) downloadPdf.style.display = "flex";
       if (shareEmail) shareEmail.style.display = "flex";
       if (shareWhatsapp) shareWhatsapp.style.display = "flex";
 
@@ -561,7 +567,8 @@ if (document.getElementById("dashboardSection")) {
         const { kpiAvg, penalty } = calculateKpi(e, hasValidKpi);
         const finalScore = getBlendedScore(kpiAvg, penalty, custAvg, stats.count, hasValidKpi);
         const pickedItems = (hasValidKpi && e.pickedItems !== undefined) ? e.pickedItems : 0;
-        return { ...e, custAvg, kpiAvg, pickedItems, penalty, finalScore, reviewsCount: stats.count };
+        const indentNumbers = (hasValidKpi && e.indentNumbers !== undefined) ? e.indentNumbers : 0;
+        return { ...e, custAvg, kpiAvg, pickedItems, indentNumbers, penalty, finalScore, reviewsCount: stats.count };
       });
 
       ranked.sort((a, b) => {
@@ -579,6 +586,7 @@ if (document.getElementById("dashboardSection")) {
         const { kpiAvg, penalty } = calculateKpi(emp, hasValidKpi);
         const finalScore = getBlendedScore(kpiAvg, penalty, custAvg, stats.count, hasValidKpi);
         const pickedItems = (hasValidKpi && emp.pickedItems !== undefined) ? emp.pickedItems : 0;
+        const indentNumbers = (hasValidKpi && emp.indentNumbers !== undefined) ? emp.indentNumbers : 0;
 
         let performanceStatus = "Needs Imp.";
         if (finalScore === 0 && !hasValidKpi && stats.count === 0) performanceStatus = "No Evaluation";
@@ -586,7 +594,7 @@ if (document.getElementById("dashboardSection")) {
         else if (finalScore >= 7.0) performanceStatus = "Good";
         else if (finalScore >= 5.0) performanceStatus = "Average";
 
-        const cardHtml = buildReportCardHtml(emp, rank, custAvg, kpiAvg, finalScore, penalty, pickedItems, performanceStatus, range, stats.count);
+        const cardHtml = buildReportCardHtml(emp, rank, custAvg, kpiAvg, finalScore, penalty, pickedItems, indentNumbers, performanceStatus, range, stats.count);
         allHtml += `
           <div class="report-card-print-block" style="page-break-after: always; padding: 10px 0;">
             ${cardHtml}
@@ -598,10 +606,12 @@ if (document.getElementById("dashboardSection")) {
       const modal = document.getElementById("reportCardModal");
 
       const printBtn = document.getElementById("printReportCardBtn");
+      const downloadPdf = document.getElementById("downloadPdfBtn");
       const shareEmail = document.getElementById("shareEmailBtn");
       const shareWhatsapp = document.getElementById("shareWhatsappBtn");
 
       if (printBtn) printBtn.style.display = "none";
+      if (downloadPdf) downloadPdf.style.display = "none";
       if (shareEmail) shareEmail.style.display = "none";
       if (shareWhatsapp) shareWhatsapp.style.display = "none";
 
@@ -612,6 +622,7 @@ if (document.getElementById("dashboardSection")) {
         setTimeout(() => {
           window.print();
           if (printBtn) printBtn.style.display = "flex";
+          if (downloadPdf) downloadPdf.style.display = "flex";
           if (shareEmail) shareEmail.style.display = "flex";
           if (shareWhatsapp) shareWhatsapp.style.display = "flex";
           modal.classList.remove("active");
@@ -989,10 +1000,12 @@ if (document.getElementById("dashboardSection")) {
 
       // Hide headers / actions
       const printBtn = document.getElementById("printReportCardBtn");
+      const downloadPdf = document.getElementById("downloadPdfBtn");
       const shareEmail = document.getElementById("shareEmailBtn");
       const shareWhatsapp = document.getElementById("shareWhatsappBtn");
 
       if (printBtn) printBtn.style.display = "none";
+      if (downloadPdf) downloadPdf.style.display = "none";
       if (shareEmail) shareEmail.style.display = "none";
       if (shareWhatsapp) shareWhatsapp.style.display = "none";
 
@@ -1008,6 +1021,7 @@ if (document.getElementById("dashboardSection")) {
           window.print();
           // Restore buttons
           if (printBtn) printBtn.style.display = "flex";
+          if (downloadPdf) downloadPdf.style.display = "flex";
           if (shareEmail) shareEmail.style.display = "flex";
           if (shareWhatsapp) shareWhatsapp.style.display = "flex";
           modal.classList.remove("active");
@@ -1439,6 +1453,7 @@ if (document.getElementById("dashboardSection")) {
             setKpiValue("kpiOfficeDecorum", "valOfficeDecorum", emp.officeDecorum);
 
             document.getElementById("kpiPickedItems").value = (hasValidKpi && emp.pickedItems !== undefined) ? emp.pickedItems : 0;
+            document.getElementById("kpiIndentNumbers").value = (hasValidKpi && emp.indentNumbers !== undefined) ? emp.indentNumbers : 0;
             document.getElementById("kpiPenalty").value = (hasValidKpi && emp.penalty !== undefined) ? emp.penalty : 0.0;
             document.getElementById("kpiPenaltyComments").value = hasValidKpi ? (emp.penaltyComments || "") : "";
             document.getElementById("kpiImprovements").value = hasValidKpi ? (emp.improvements || "") : "";
@@ -1702,7 +1717,7 @@ if (document.getElementById("dashboardSection")) {
       }
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="no-data">${employees.length === 0 ? "No employees registered yet." : "No matching employees found."}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="no-data">${employees.length === 0 ? "No employees registered yet." : "No matching employees found."}</td></tr>`;
         return;
       }
 
@@ -1716,6 +1731,7 @@ if (document.getElementById("dashboardSection")) {
         const kpiAvg = kpiAvgVal.toFixed(2);
 
         const pickedItems = (hasValidKpi && emp.pickedItems !== undefined) ? emp.pickedItems : 0;
+        const indentNumbers = (hasValidKpi && emp.indentNumbers !== undefined) ? emp.indentNumbers : 0;
         const link = getEmployeeFeedbackLink(emp.employeeId);
 
         let catBadgeColor = "rgba(234, 88, 12, 0.15)";
@@ -1756,6 +1772,7 @@ if (document.getElementById("dashboardSection")) {
           <td class="emp-td-center"><span style="font-weight: 600;">${stats.count}</span></td>
           <td class="emp-td-center"><span class="kpi-badge">${kpiAvg}</span></td>
           <td class="emp-td-center"><span style="font-weight: 600; color: var(--color-text-secondary);">${pickedItems}</span></td>
+          <td class="emp-td-center"><span style="font-weight: 600; color: var(--color-text-secondary);">${indentNumbers}</span></td>
           <td class="emp-td-center">${penaltyHtml}</td>
           <td class="emp-td-center">
             <button class="emp-icon-btn btn-copy" data-link="${link}" title="Copy feedback link">
@@ -2098,6 +2115,93 @@ if (document.getElementById("dashboardSection")) {
       };
     }
 
+    // Wire Download PDF Button
+    const downloadPdfBtn = document.getElementById("downloadPdfBtn");
+    if (downloadPdfBtn) {
+      downloadPdfBtn.onclick = async () => {
+        const printArea = document.getElementById("reportCardPrintArea");
+        if (!printArea) return;
+
+        // Get employee name for the filename
+        const empNameEl = printArea.querySelector("#rcEmpName");
+        const empName = empNameEl ? empNameEl.textContent.trim() : "Employee";
+        const empIdEl = printArea.querySelector("#rcEmpId");
+        const empId = empIdEl ? empIdEl.textContent.trim() : "";
+        const filename = `Report_Card_${empName.replace(/\s+/g, "_")}${empId ? "_" + empId : ""}.pdf`;
+
+        // Update button state
+        const originalHtml = downloadPdfBtn.innerHTML;
+        downloadPdfBtn.innerHTML = `<svg style="width:1rem;height:1rem;animation:spin 1s linear infinite" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg><span>Generating…</span>`;
+        downloadPdfBtn.disabled = true;
+
+        try {
+          // Temporarily force light background for clean PDF capture
+          const originalBg = printArea.style.background;
+          const originalColor = printArea.style.color;
+          printArea.style.background = "#ffffff";
+          printArea.style.color = "#1e293b";
+
+          const canvas = await html2canvas(printArea, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: "#ffffff",
+            logging: false,
+            windowWidth: 700
+          });
+
+          // Restore styles
+          printArea.style.background = originalBg;
+          printArea.style.color = originalColor;
+
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+          const pageWidth = pdf.internal.pageSize.getWidth();
+          const pageHeight = pdf.internal.pageSize.getHeight();
+          const margin = 10;
+          const usableWidth = pageWidth - margin * 2;
+
+          const imgData = canvas.toDataURL("image/png");
+          const imgWidth = usableWidth;
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+          // If content exceeds one page, split into multiple pages
+          let yOffset = margin;
+          let remainingHeight = imgHeight;
+
+          while (remainingHeight > 0) {
+            const sliceHeight = Math.min(remainingHeight, pageHeight - margin * 2);
+            const sourceY = (imgHeight - remainingHeight) * (canvas.height / imgHeight);
+            const sourceH = sliceHeight * (canvas.height / imgHeight);
+
+            const sliceCanvas = document.createElement("canvas");
+            sliceCanvas.width = canvas.width;
+            sliceCanvas.height = sourceH;
+            const sliceCtx = sliceCanvas.getContext("2d");
+            sliceCtx.drawImage(canvas, 0, sourceY, canvas.width, sourceH, 0, 0, canvas.width, sourceH);
+
+            const sliceData = sliceCanvas.toDataURL("image/png");
+            pdf.addImage(sliceData, "PNG", margin, yOffset, imgWidth, sliceHeight);
+
+            remainingHeight -= sliceHeight;
+            if (remainingHeight > 0) {
+              pdf.addPage();
+              yOffset = margin;
+            }
+          }
+
+          pdf.save(filename);
+          showToast(`PDF downloaded: ${filename}`);
+        } catch (err) {
+          console.error("PDF generation failed:", err);
+          alert("Could not generate PDF. Please try the Print button instead.");
+        } finally {
+          downloadPdfBtn.innerHTML = originalHtml;
+          downloadPdfBtn.disabled = false;
+        }
+      };
+    }
+
     // Wire Export CSV Button
     const btnExportCSV = document.getElementById("btnExportCSV");
     if (btnExportCSV) {
@@ -2280,6 +2384,7 @@ if (document.getElementById("dashboardSection")) {
           const discipline = Number(document.getElementById("kpiDiscipline").value);
           const attendance = Number(document.getElementById("kpiAttendance").value);
           const pickedItems = Number(document.getElementById("kpiPickedItems").value);
+          const indentNumbers = Number(document.getElementById("kpiIndentNumbers").value);
           const penalty = Number(document.getElementById("kpiPenalty").value);
           const penaltyComments = document.getElementById("kpiPenaltyComments").value.trim();
           const improvementsVal = document.getElementById("kpiImprovements").value.trim();
@@ -2290,6 +2395,7 @@ if (document.getElementById("dashboardSection")) {
             discipline,
             attendance,
             pickedItems,
+            indentNumbers,
             penalty,
             penaltyComments,
             improvements: improvementsVal

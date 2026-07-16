@@ -11,6 +11,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#ff9f0a" />
   <link rel="apple-touch-icon" href="/icons/icon-192.png" />
@@ -228,15 +230,16 @@
             <div class="table-responsive">
               <table class="custom-table" id="employeeTable">
                 <colgroup>
-                  <col style="width: 180px;"> <!-- Employee -->
-                  <col style="width: 100px;"> <!-- Category -->
-                  <col style="width: 100px;"> <!-- Cust Avg -->
-                  <col style="width: 100px;"> <!-- Reviews -->
-                  <col style="width: 90px;">  <!-- KPI Avg -->
-                  <col style="width: 90px;">  <!-- KPI Items -->
+                  <col style="width: 160px;"> <!-- Employee -->
+                  <col style="width: 90px;">  <!-- Category -->
+                  <col style="width: 90px;">  <!-- Cust Avg -->
+                  <col style="width: 80px;">  <!-- Reviews -->
+                  <col style="width: 80px;">  <!-- KPI Avg -->
+                  <col style="width: 80px;">  <!-- KPI Items -->
+                  <col style="width: 80px;">  <!-- KPI Indents -->
                   <col style="width: 80px;">  <!-- Penalty -->
-                  <col style="width: 80px;">  <!-- Link -->
-                  <col style="width: 120px;"> <!-- Actions -->
+                  <col style="width: 70px;">  <!-- Link -->
+                  <col style="width: 110px;"> <!-- Actions -->
                 </colgroup>
                 <thead>
                   <tr>
@@ -246,6 +249,7 @@
                     <th>Reviews</th>
                     <th>KPI Avg</th>
                     <th>Items</th>
+                    <th>Indents</th>
                     <th>Penalty</th>
                     <th>Link</th>
                     <th>Actions</th>
@@ -253,7 +257,7 @@
                 </thead>
                 <tbody id="employeeTableBody">
                   <tr>
-                    <td colspan="9" class="no-data">Loading employees...</td>
+                    <td colspan="10" class="no-data">Loading employees...</td>
                   </tr>
                 </tbody>
               </table>
@@ -652,6 +656,12 @@
             <input type="number" id="kpiPickedItems" min="0" placeholder="e.g. 100" required />
           </div>
           
+          <!-- 9b. Indents Created -->
+          <div class="form-group" style="margin-top: 1rem;">
+            <label for="kpiIndentNumbers">Indents Created</label>
+            <input type="number" id="kpiIndentNumbers" min="0" placeholder="e.g. 10" required />
+          </div>
+          
           <!-- 10. Penalty -->
           <div class="form-group" style="margin-top: 1rem;">
             <label for="kpiPenalty">Penalty (Points Deducted)</label>
@@ -713,6 +723,12 @@
       <div class="drawer-header no-print" style="border-bottom: 1px solid var(--color-border); padding-bottom: 1rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
         <h2 style="margin: 0;">Digital Report Card</h2>
         <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <button class="btn-primary" id="downloadPdfBtn" style="padding: 0.5rem 1rem; font-size: 0.85rem; display: flex; align-items: center; gap: 0.25rem; background: linear-gradient(135deg, #ea580c, #fb923c);">
+            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <span>Download PDF</span>
+          </button>
           <button class="btn-primary" id="printReportCardBtn" style="padding: 0.5rem 1rem; font-size: 0.85rem; display: flex; align-items: center; gap: 0.25rem;">
             <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>

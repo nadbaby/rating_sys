@@ -157,6 +157,21 @@ function updateEmployeeProgressUI(emp, range, feedbacks, employees) {
   document.getElementById('progressReviewsCount').textContent = stats.count;
   document.getElementById('progressAverageRating').textContent = `${custAvg.toFixed(2)} / 5.0`;
 
+  // Dynamic labeling for 15d Count based on category
+  const normCategory = getNormalizedCategory(emp.category);
+  const lblProgressPickedItems = document.getElementById('lblProgressPickedItems');
+  if (lblProgressPickedItems) {
+    if (normCategory === "Sales") {
+      lblProgressPickedItems.textContent = "15d Invoices Generated:";
+    } else if (normCategory === "Store") {
+      lblProgressPickedItems.textContent = "15d Picked Items:";
+    } else {
+      lblProgressPickedItems.textContent = "15d Tasks Completed:";
+    }
+  }
+  document.getElementById('progressPickedItems').textContent = (hasKpi && emp.pickedItems !== undefined) ? emp.pickedItems : 0;
+  document.getElementById('progressIndentNumbers').textContent = (hasKpi && emp.indentNumbers !== undefined) ? emp.indentNumbers : 0;
+
   const startStr = formatDate(range.start);
   const endStr = formatDate(range.end);
   document.getElementById('empReportPeriodText').textContent = `Report Period: ${startStr} to ${endStr}`;
@@ -186,7 +201,7 @@ function updateEmployeeProgressUI(emp, range, feedbacks, employees) {
   
   const addProgressKpiRow = (metricName, scoreVal) => {
     const numVal = (hasKpi && scoreVal !== undefined) ? Number(scoreVal) : 10.0;
-    const starsCount = Math.round(numVal / 2);
+    const starsCount = Math.min(5, Math.max(0, Math.round(numVal / 2)));
     const stars = '★'.repeat(starsCount) + '☆'.repeat(5 - starsCount);
     
     const row = document.createElement('tr');

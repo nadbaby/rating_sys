@@ -110,6 +110,7 @@ export const dbHelper = {
         penaltyComments: kpi.penaltyComments || "",
         improvements: kpi.improvements || "",
         pickedItems: getNum(kpi.pickedItems, 0),
+        indentNumbers: getNum(kpi.indentNumbers, 0),
         kpiUpdatedAt: kpi.kpiUpdatedAt || new Date().toISOString(),
 
         // Sales specific KPIs
