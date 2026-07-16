@@ -1,4 +1,4 @@
-﻿// js/admin.js
+// js/admin.js
 // Handles admin login, authentication state, dashboard data fetching, analytics, employee directory, and CSV export.
 
 import { auth, db } from "./firebase-init.js";
@@ -2193,6 +2193,79 @@ if (document.getElementById("dashboardSection")) {
     if (btnPrintAllQRCodes) {
       btnPrintAllQRCodes.onclick = () => {
         printAllQRCodes();
+      };
+    }
+
+    // Wire Download QR PDF Button
+    const btnDownloadQRPdf = document.getElementById("btnDownloadQRPdf");
+    if (btnDownloadQRPdf) {
+      btnDownloadQRPdf.onclick = () => {
+        if (cachedEmployees.length === 0) {
+          alert("No employees registered yet to generate QR PDF.");
+          return;
+        }
+
+        // Build QR card HTML for all employees (same as printAllQRCodes)
+        let cardsHtml = "";
+        cachedEmployees.forEach(emp => {
+          const link = getEmployeeFeedbackLink(emp.employeeId);
+          const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(link)}`;
+          cardsHtml += `
+            <div style="width:240px; padding:1.25rem; border:2px solid #e2e8f0; border-radius:12px; text-align:center; background:#ffffff; color:#0f172a; page-break-inside:avoid; break-inside:avoid; margin:8px; display:inline-block; box-sizing:border-box; font-family:'Inter',system-ui,sans-serif; vertical-align:top;">
+              <div style="font-size:0.9rem; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; color:#ea580c; margin-bottom:0.2rem;">Fine Bearing Store</div>
+              <div style="font-size:0.65rem; color:#64748b; text-transform:uppercase; font-weight:600; margin-bottom:0.65rem;">Customer Feedback QR</div>
+              <img src="${qrUrl}" alt="QR Code for ${escapeHtml(emp.name)}" style="width:150px; height:150px; margin-bottom:0.65rem; border:1px solid #e2e8f0; padding:5px; border-radius:8px; background:#ffffff;" crossorigin="anonymous" />
+              <div style="font-size:0.95rem; font-weight:700; color:#0f172a; margin-bottom:0.1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(emp.name)}</div>
+              <div style="font-size:0.65rem; color:#64748b;">ID: ${escapeHtml(emp.employeeId)}</div>
+            </div>`;
+        });
+
+        const printWindow = window.open("", "_blank", "width=900,height=1000,scrollbars=yes");
+        if (!printWindow) {
+          alert("Pop-up blocked. Please allow pop-ups for this site and try again.");
+          return;
+        }
+
+        printWindow.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>QR Codes - Fine Bearing Store</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { background: #ffffff; font-family: 'Inter', system-ui, sans-serif; }
+    body { padding: 20px; }
+    .qr-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+    @media print {
+      body { padding: 5px; }
+      @page { size: A4 portrait; margin: 10mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="qr-grid">${cardsHtml}</div>
+  <script>
+    // Wait for all QR images to load before printing
+    window.onload = function() {
+      var imgs = document.querySelectorAll('img');
+      var total = imgs.length;
+      if (total === 0) { setTimeout(function(){ window.print(); }, 300); return; }
+      var loaded = 0;
+      function tryPrint() {
+        loaded++;
+        if (loaded >= total) { setTimeout(function(){ window.print(); }, 400); }
+      }
+      imgs.forEach(function(img) {
+        if (img.complete) { tryPrint(); }
+        else { img.onload = tryPrint; img.onerror = tryPrint; }
+      });
+    };
+  <\/script>
+</body>
+</html>`);
+        printWindow.document.close();
+        showToast("Choose 'Save as PDF' in the print dialog");
       };
     }
 
