@@ -335,9 +335,16 @@
           </div>
 
           <!-- Employee Category -->
-          <div class="form-group" style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--color-border); padding-bottom: 1.25rem;">
+          <div class="form-group" style="margin-bottom: 1rem;">
             <label for="kpiEmployeeCategory">Category</label>
             <input type="text" id="kpiEmployeeCategory" required style="font-weight: 600;" placeholder="e.g. Sales, Store, Admin" />
+          </div>
+
+          <!-- Evaluation Date (for associating with cycles) -->
+          <div class="form-group" style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--color-border); padding-bottom: 1.25rem;">
+            <label for="kpiEvaluationDate">Evaluation Date</label>
+            <input type="date" id="kpiEvaluationDate" required style="font-weight: 600; padding: 0.5rem; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-bg-card); color: var(--color-text-primary);" />
+            <small class="helper-text" style="display: block; margin-top: 0.25rem; font-size: 0.75rem; color: var(--color-text-secondary);">Determines which report cycle/period this evaluation belongs to.</small>
           </div>
           
           <!-- 1. Discipline -->

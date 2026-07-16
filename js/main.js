@@ -30,6 +30,231 @@ const ratingDesc = document.getElementById('ratingDesc');
 // State variables
 let currentEmployeeId = null;
 let currentCounterName = 'Unknown Counter';
+let loggedEmployee = null;
+
+// Helper to format date to YYYY-MM-DD
+function formatDate(ts) {
+  if (!ts) return "N/A";
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  if (isNaN(d.getTime())) return "N/A";
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function getEmployeeSelectedDateRange() {
+  const select = document.getElementById("empCycleSelect");
+  const fromInput = document.getElementById("empDateFrom");
+  const toInput = document.getElementById("empDateTo");
+
+  const val = select ? select.value : "current-15";
+  const today = new Date();
+  let start = new Date();
+  let end = new Date();
+
+  if (val === "current-15") {
+    if (today.getDate() <= 15) {
+      start = new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0);
+      end = new Date(today.getFullYear(), today.getMonth(), 15, 23, 59, 59, 999);
+    } else {
+      start = new Date(today.getFullYear(), today.getMonth(), 16, 0, 0, 0);
+      end = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+    }
+  } else if (val === "prev-15") {
+    if (today.getDate() <= 15) {
+      start = new Date(today.getFullYear(), today.getMonth() - 1, 16, 0, 0, 0);
+      end = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
+    } else {
+      start = new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0);
+      end = new Date(today.getFullYear(), today.getMonth(), 15, 23, 59, 59, 999);
+    }
+  } else if (val === "current-month") {
+    start = new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0);
+    end = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+  } else if (val === "prev-month") {
+    start = new Date(today.getFullYear(), today.getMonth() - 1, 1, 0, 0, 0);
+    end = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
+  } else if (val === "custom") {
+    if (fromInput && fromInput.value) {
+      start = new Date(fromInput.value);
+      start.setHours(0, 0, 0, 0);
+    } else {
+      start = new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0);
+    }
+    if (toInput && toInput.value) {
+      end = new Date(toInput.value);
+      end.setHours(23, 59, 59, 999);
+    } else {
+      end = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+    }
+  }
+  return { start, end };
+}
+
+function updateEmployeeProgressUI(emp, range, feedbacks, employees) {
+  const currentFeedbacks = feedbacks.filter(f => {
+    if (!f.createdAt) return false;
+    const d = f.createdAt.toDate ? f.createdAt.toDate() : new Date(f.createdAt);
+    return d >= range.start && d <= range.end;
+  });
+
+  const empStats = {};
+  employees.forEach(e => {
+    empStats[e.employeeId] = { count: 0, sum: 0 };
+    currentFeedbacks.forEach(f => {
+      if (f.employeeId === e.employeeId || f.counter === e.name) {
+        empStats[e.employeeId].count++;
+        empStats[e.employeeId].sum += f.rating;
+      }
+    });
+  });
+
+  const ranked = employees.map(e => {
+    const stats = empStats[e.employeeId] || { count: 0, sum: 0 };
+    const custAvg = stats.count ? stats.sum / stats.count : 0;
+    const hasValidKpi = isKpiValidForRange(e.kpiUpdatedAt, range);
+    const { kpiAvg, penalty } = calculateKpi(e, hasValidKpi);
+    const finalScore = getBlendedScore(kpiAvg, penalty, custAvg, stats.count, hasValidKpi);
+    return { employeeId: e.employeeId, custAvg, kpiAvg, finalScore, reviewsCount: stats.count };
+  });
+
+  ranked.sort((a, b) => {
+    if (b.reviewsCount !== a.reviewsCount) return b.reviewsCount - a.reviewsCount;
+    if (b.custAvg !== a.custAvg) return b.custAvg - a.custAvg;
+    return b.finalScore - a.finalScore;
+  });
+
+  const rankIdx = ranked.findIndex(r => r.employeeId === emp.employeeId);
+  const rank = rankIdx !== -1 ? rankIdx + 1 : "-";
+
+  const stats = empStats[emp.employeeId] || { count: 0, sum: 0 };
+  const custAvg = stats.count ? stats.sum / stats.count : 0;
+  const hasValidKpi = isKpiValidForRange(emp.kpiUpdatedAt, range);
+  const { kpiAvg, penalty } = calculateKpi(emp, hasValidKpi);
+  const finalScore = getBlendedScore(kpiAvg, penalty, custAvg, stats.count, hasValidKpi);
+
+  document.getElementById('progressName').textContent = emp.name;
+  document.getElementById('progressRole').textContent = emp.category || 'Sales';
+  document.getElementById('progressRank').textContent = `#${rank}`;
+  document.getElementById('progressScore').textContent = `${finalScore.toFixed(2)} / 10`;
+  document.getElementById('progressPenalty').textContent = penalty.toFixed(1);
+  document.getElementById('progressReviewsCount').textContent = stats.count;
+  document.getElementById('progressAverageRating').textContent = `${custAvg.toFixed(2)} / 5.0`;
+
+  const startStr = formatDate(range.start);
+  const endStr = formatDate(range.end);
+  document.getElementById('empReportPeriodText').textContent = `Report Period: ${startStr} to ${endStr}`;
+
+  const deductionsBox = document.getElementById('progressDeductionsBox');
+  const penaltyCommentsEl = document.getElementById('progressPenaltyComments');
+  if (hasValidKpi && emp.penaltyComments) {
+    penaltyCommentsEl.textContent = emp.penaltyComments;
+    deductionsBox.style.display = 'block';
+  } else {
+    deductionsBox.style.display = 'none';
+  }
+
+  const progressKpiBody = document.getElementById('progressKpiBody');
+  progressKpiBody.innerHTML = '';
+  
+  const addProgressKpiRow = (metricName, scoreVal) => {
+    const numVal = (hasValidKpi && scoreVal !== undefined) ? Number(scoreVal) : 10.0;
+    const starsCount = Math.round(numVal / 2);
+    const stars = '★'.repeat(starsCount) + '☆'.repeat(5 - starsCount);
+    
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td class="kpi-metric-name">${metricName}</td>
+      <td class="kpi-metric-score">
+        <span class="kpi-stars-preview">${stars}</span>
+        ${numVal.toFixed(1)}
+      </td>
+    `;
+    progressKpiBody.appendChild(row);
+  };
+
+  addProgressKpiRow("Discipline", emp.discipline);
+  addProgressKpiRow("Attendance", emp.attendance);
+
+  const normCategory = getNormalizedCategory(emp.category);
+  if (normCategory === "Sales") {
+    addProgressKpiRow("Customer Handling", emp.customerHandling);
+    addProgressKpiRow("Billing Accuracy", emp.billingAccuracy);
+    addProgressKpiRow("Independent Handling", emp.independentHandling);
+    addProgressKpiRow("Follow-up & Reporting", emp.followUpReport);
+    addProgressKpiRow("Customer Satisfaction", emp.customerSatisfaction);
+    addProgressKpiRow("Cleanliness", emp.cleanliness);
+  } else if (normCategory === "Store") {
+    addProgressKpiRow("Picking Accuracy", emp.pickingAccuracy);
+    addProgressKpiRow("Stock Placement/Sorting", emp.stockSorting);
+    addProgressKpiRow("Material Security", emp.materialSecurity);
+    addProgressKpiRow("Cleanliness & Maintenance", emp.storeCleanliness);
+  } else if (normCategory === "Admin") {
+    addProgressKpiRow("Billing & Tax Accuracy", emp.billingTaxAccuracy);
+    addProgressKpiRow("Payment Follow-up", emp.paymentFollowUp);
+    addProgressKpiRow("Filing & Bookkeeping", emp.filingBookkeeping);
+    addProgressKpiRow("Office Decorum", emp.officeDecorum);
+  }
+}
+
+async function loadAndRenderEmployeeProgress(empId) {
+  try {
+    const { employees, feedbacks } = await loadAllData();
+    const emp = employees.find(e => e.employeeId === empId || e.id === empId);
+    if (!emp) {
+      console.error("Employee not found for progress render:", empId);
+      return;
+    }
+    loggedEmployee = emp;
+    const range = getEmployeeSelectedDateRange();
+    updateEmployeeProgressUI(emp, range, feedbacks, employees);
+  } catch (err) {
+    console.error("Error loading progress details:", err);
+  }
+}
+
+function setupEmployeeProgressEvents() {
+  const cycleSelect = document.getElementById("empCycleSelect");
+  const customDatesGroup = document.getElementById("empCustomDatesGroup");
+  const applyBtn = document.getElementById("empApplyFilterBtn");
+  const logoutBtn = document.getElementById("empLogoutBtn");
+
+  if (cycleSelect) {
+    cycleSelect.addEventListener("change", (e) => {
+      if (e.target.value === "custom") {
+        customDatesGroup.style.display = "flex";
+      } else {
+        customDatesGroup.style.display = "none";
+        if (loggedEmployee) {
+          loadAndRenderEmployeeProgress(loggedEmployee.employeeId || loggedEmployee.id);
+        }
+      }
+    });
+  }
+
+  if (applyBtn) {
+    applyBtn.addEventListener("click", () => {
+      if (loggedEmployee) {
+        loadAndRenderEmployeeProgress(loggedEmployee.employeeId || loggedEmployee.id);
+      }
+    });
+  }
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", () => {
+      sessionStorage.removeItem("emp_logged_in_id");
+      loggedEmployee = null;
+      document.getElementById("employeeProgressCard").style.display = "none";
+      document.getElementById("employeeLoginCard").style.display = "block";
+      
+      const loginNameInput = document.getElementById("empLoginName");
+      const loginPasswordInput = document.getElementById("empLoginPassword");
+      if (loginNameInput) loginNameInput.value = "";
+      if (loginPasswordInput) loginPasswordInput.value = "";
+    });
+  }
+}
 
 // Helper functions for KPI & Blended Score calculations
 function getNormalizedCategory(categoryName) {
@@ -165,16 +390,31 @@ async function init() {
   if (isProgressView) {
     loadingCard.style.display = 'none';
     formContainer.style.display = 'none';
+    
     const loginCard = document.getElementById('employeeLoginCard');
-    loginCard.style.display = 'block';
+    const progressCard = document.getElementById('employeeProgressCard');
+    
+    // Wire filter and logout events
+    setupEmployeeProgressEvents();
+
+    // Check if there is an active logged-in employee session
+    const cachedEmpId = sessionStorage.getItem("emp_logged_in_id");
+    if (cachedEmpId) {
+      loginCard.style.display = 'none';
+      progressCard.style.display = 'block';
+      await loadAndRenderEmployeeProgress(cachedEmpId);
+    } else {
+      loginCard.style.display = 'block';
+      progressCard.style.display = 'none';
+    }
 
     const loginForm = document.getElementById('employeeLoginForm');
     const loginNameInput = document.getElementById('empLoginName');
     const loginPasswordInput = document.getElementById('empLoginPassword');
     const loginError = document.getElementById('empLoginError');
 
-    // Pre-fill name if empId is provided in URL
-    if (empId) {
+    // Pre-fill name if empId is provided in URL and not logged in yet
+    if (empId && !cachedEmpId) {
       try {
         let employeeData = null;
         let fallback = false;
@@ -220,7 +460,7 @@ async function init() {
       submitBtn.textContent = 'Verifying...';
 
       try {
-        const { employees, feedbacks } = await loadAllData();
+        const { employees } = await loadAllData();
         
         // Find employee by name (case-insensitive and trimmed)
         const emp = employees.find(e => e.name.trim().toLowerCase() === enteredName.toLowerCase());
@@ -242,117 +482,12 @@ async function init() {
           return;
         }
 
-        // Successfully verified! Calculate progress report card.
-        const range = getActiveDateRange();
-
-        // Filter feedbacks for this cycle
-        const currentFeedbacks = feedbacks.filter(f => {
-          if (!f.createdAt) return false;
-          const d = f.createdAt.toDate ? f.createdAt.toDate() : new Date(f.createdAt);
-          return d >= range.start && d <= range.end;
-        });
-
-        const empStats = {};
-        employees.forEach(e => {
-          empStats[e.employeeId] = { count: 0, sum: 0 };
-          currentFeedbacks.forEach(f => {
-            if (f.employeeId === e.employeeId || f.counter === e.name) {
-              empStats[e.employeeId].count++;
-              empStats[e.employeeId].sum += f.rating;
-            }
-          });
-        });
-
-        const ranked = employees.map(e => {
-          const stats = empStats[e.employeeId] || { count: 0, sum: 0 };
-          const custAvg = stats.count ? stats.sum / stats.count : 0;
-          const hasValidKpi = isKpiValidForRange(e.kpiUpdatedAt, range);
-          const { kpiAvg, penalty } = calculateKpi(e, hasValidKpi);
-          const finalScore = getBlendedScore(kpiAvg, penalty, custAvg, stats.count, hasValidKpi);
-          return { employeeId: e.employeeId, custAvg, kpiAvg, finalScore, reviewsCount: stats.count };
-        });
-
-        ranked.sort((a, b) => {
-          if (b.reviewsCount !== a.reviewsCount) return b.reviewsCount - a.reviewsCount;
-          if (b.custAvg !== a.custAvg) return b.custAvg - a.custAvg;
-          return b.finalScore - a.finalScore;
-        });
-
-        const rankIdx = ranked.findIndex(r => r.employeeId === emp.employeeId);
-        const rank = rankIdx !== -1 ? rankIdx + 1 : "-";
-
-        const stats = empStats[emp.employeeId] || { count: 0, sum: 0 };
-        const custAvg = stats.count ? stats.sum / stats.count : 0;
-        const hasValidKpi = isKpiValidForRange(emp.kpiUpdatedAt, range);
-        const { kpiAvg, penalty } = calculateKpi(emp, hasValidKpi);
-        const finalScore = getBlendedScore(kpiAvg, penalty, custAvg, stats.count, hasValidKpi);
-
-        // Render the progress view fields
-        document.getElementById('progressName').textContent = emp.name;
-        document.getElementById('progressRole').textContent = emp.category || 'Sales';
-        document.getElementById('progressRank').textContent = `#${rank}`;
-        document.getElementById('progressScore').textContent = `${finalScore.toFixed(2)} / 10`;
-        document.getElementById('progressPenalty').textContent = penalty.toFixed(1);
-        document.getElementById('progressReviewsCount').textContent = stats.count;
-        document.getElementById('progressAverageRating').textContent = `${custAvg.toFixed(2)} / 5.0`;
-
-        // Deductions
-        const deductionsBox = document.getElementById('progressDeductionsBox');
-        const penaltyCommentsEl = document.getElementById('progressPenaltyComments');
-        if (hasValidKpi && emp.penaltyComments) {
-          penaltyCommentsEl.textContent = emp.penaltyComments;
-          deductionsBox.style.display = 'block';
-        } else {
-          deductionsBox.style.display = 'none';
-        }
-
-        // Detailed KPIs Table
-        const progressKpiBody = document.getElementById('progressKpiBody');
-        progressKpiBody.innerHTML = '';
-        
-        const addProgressKpiRow = (metricName, scoreVal) => {
-          const numVal = (hasValidKpi && scoreVal !== undefined) ? Number(scoreVal) : 10.0;
-          const starsCount = Math.round(numVal / 2);
-          const stars = '★'.repeat(starsCount) + '☆'.repeat(5 - starsCount);
-          
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td class="kpi-metric-name">${metricName}</td>
-            <td class="kpi-metric-score">
-              <span class="kpi-stars-preview">${stars}</span>
-              ${numVal.toFixed(1)}
-            </td>
-          `;
-          progressKpiBody.appendChild(row);
-        };
-
-        addProgressKpiRow("Discipline", emp.discipline);
-        addProgressKpiRow("Attendance", emp.attendance);
-
-        const normCategory = getNormalizedCategory(emp.category);
-        if (normCategory === "Sales") {
-          addProgressKpiRow("Customer Handling", emp.customerHandling);
-          addProgressKpiRow("Billing Accuracy", emp.billingAccuracy);
-          addProgressKpiRow("Independent Handling", emp.independentHandling);
-          addProgressKpiRow("Follow-up & Reporting", emp.followUpReport);
-          addProgressKpiRow("Customer Satisfaction", emp.customerSatisfaction);
-          addProgressKpiRow("Cleanliness", emp.cleanliness);
-        } else if (normCategory === "Store") {
-          addProgressKpiRow("Picking Accuracy", emp.pickingAccuracy);
-          addProgressKpiRow("Stock Placement/Sorting", emp.stockSorting);
-          addProgressKpiRow("Material Security", emp.materialSecurity);
-          addProgressKpiRow("Cleanliness & Maintenance", emp.storeCleanliness);
-        } else if (normCategory === "Admin") {
-          addProgressKpiRow("Billing & Tax Accuracy", emp.billingTaxAccuracy);
-          addProgressKpiRow("Payment Follow-up", emp.paymentFollowUp);
-          addProgressKpiRow("Filing & Bookkeeping", emp.filingBookkeeping);
-          addProgressKpiRow("Office Decorum", emp.officeDecorum);
-        }
-
-        loadingCard.style.display = 'none';
+        // Successfully verified! Save session and load progress card.
+        const empIdToSave = emp.employeeId || emp.id;
+        sessionStorage.setItem("emp_logged_in_id", empIdToSave);
         loginCard.style.display = 'none';
-        document.getElementById('employeeProgressCard').style.display = 'block';
-
+        progressCard.style.display = 'block';
+        await loadAndRenderEmployeeProgress(empIdToSave);
       } catch (err) {
         console.error("Verification failed:", err);
         loginError.textContent = "An error occurred. Please try again later.";

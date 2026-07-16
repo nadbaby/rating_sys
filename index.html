@@ -137,6 +137,37 @@
           </div>
         </div>
 
+        <!-- Employee Progress Report Filter -->
+        <div class="employee-filter-section">
+          <div class="employee-filter-row">
+            <div class="employee-filter-group">
+              <label for="empCycleSelect">Report Period</label>
+              <select id="empCycleSelect">
+                <option value="current-15">Current 15 Days</option>
+                <option value="prev-15">Previous 15 Days</option>
+                <option value="current-month">Current Month</option>
+                <option value="prev-month">Previous Month</option>
+                <option value="custom">Custom Date Range</option>
+              </select>
+            </div>
+            
+            <div id="empCustomDatesGroup" style="display: none; gap: 1rem; flex: 2; align-items: flex-end;">
+              <div class="employee-filter-group">
+                <label for="empDateFrom">From</label>
+                <input type="date" id="empDateFrom" />
+              </div>
+              <div class="employee-filter-group">
+                <label for="empDateTo">To</label>
+                <input type="date" id="empDateTo" />
+              </div>
+              <button id="empApplyFilterBtn" class="btn-apply-emp-filter">Apply</button>
+            </div>
+          </div>
+          <div id="empReportPeriodText" class="emp-report-period-badge">
+            Report Period: -
+          </div>
+        </div>
+
         <div class="metric-pill-grid">
           <div class="metric-pill-card">
             <div class="metric-pill-title">Final Blended Score</div>
@@ -179,7 +210,8 @@
           </div>
         </div>
 
-        <div style="margin-top: 1.5rem; text-align: center;">
+        <div style="margin-top: 1.5rem; display: flex; gap: 0.75rem; justify-content: center;">
+          <button id="empLogoutBtn" class="btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">Sign Out</button>
           <a href="login.html" class="btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; display: inline-block;">Back to Main Portal</a>
         </div>
       </div>

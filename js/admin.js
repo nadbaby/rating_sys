@@ -1373,6 +1373,15 @@ if (document.getElementById("dashboardSection")) {
             const range = getActiveDateRange();
             const hasValidKpi = isKpiValidForRange(emp.kpiUpdatedAt, range);
 
+            const evalDateInput = document.getElementById("kpiEvaluationDate");
+            if (evalDateInput) {
+              if (hasValidKpi && emp.kpiUpdatedAt) {
+                evalDateInput.value = formatDate(emp.kpiUpdatedAt);
+              } else {
+                evalDateInput.value = formatDate(range.end);
+              }
+            }
+
             const setKpiValue = (inputId, valId, value) => {
               const numVal = Math.round((hasValidKpi && value !== undefined) ? value : 10);
               const input = document.getElementById(inputId);
@@ -2267,11 +2276,19 @@ if (document.getElementById("dashboardSection")) {
           }
 
           try {
+            let evalDateVal = new Date();
+            const evalDateInput = document.getElementById("kpiEvaluationDate");
+            if (evalDateInput && evalDateInput.value) {
+              evalDateVal = new Date(evalDateInput.value);
+              // Set to midday to avoid timezone shift
+              evalDateVal.setHours(12, 0, 0, 0);
+            }
+
             if (useFirebase) {
               const empDocRef = doc(db, "employees", empId);
               await setDoc(empDocRef, {
                 ...updateData,
-                kpiUpdatedAt: serverTimestamp()
+                kpiUpdatedAt: Timestamp.fromDate(evalDateVal)
               }, { merge: true });
             } else {
               const res = await fetch(`/api/employees/${empId}/kpi`, {
@@ -2279,7 +2296,7 @@ if (document.getElementById("dashboardSection")) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   ...updateData,
-                  kpiUpdatedAt: new Date().toISOString()
+                  kpiUpdatedAt: evalDateVal.toISOString()
                 })
               });
               if (!res.ok) {
