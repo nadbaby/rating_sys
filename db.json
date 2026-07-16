@@ -1,0 +1,130 @@
+{
+  "employees": [
+    {
+      "employeeId": "1",
+      "name": "Pooja",
+      "category": "Sales",
+      "createdAt": "2026-07-04T05:13:46.967Z"
+    },
+    {
+      "employeeId": "10",
+      "name": "Kajal 2",
+      "category": "Sales",
+      "createdAt": "2026-07-04T05:23:03.723Z"
+    },
+    {
+      "employeeId": "11",
+      "name": "Ishmeet",
+      "category": "Sales",
+      "createdAt": "2026-07-04T05:23:09.555Z",
+      "discipline": 7,
+      "attendance": 8,
+      "penalty": 0,
+      "penaltyComments": "",
+      "improvements": "",
+      "pickedItems": 0,
+      "kpiUpdatedAt": "2026-07-15T10:16:53.073Z",
+      "customerHandling": 7,
+      "billingAccuracy": 7,
+      "independentHandling": 4,
+      "followUpReport": 5,
+      "customerSatisfaction": 6,
+      "cleanliness": 7
+    },
+    {
+      "employeeId": "12",
+      "name": "Durga",
+      "category": "Sales",
+      "createdAt": "2026-07-04T05:23:18.748Z",
+      "discipline": 9,
+      "attendance": 10,
+      "penalty": 0,
+      "penaltyComments": "",
+      "improvements": "",
+      "pickedItems": 0,
+      "kpiUpdatedAt": "2026-07-01T06:30:00Z",
+      "customerHandling": 9,
+      "billingAccuracy": 9,
+      "independentHandling": 8,
+      "followUpReport": 9,
+      "customerSatisfaction": 10,
+      "cleanliness": 10
+    },
+    {
+      "employeeId": "2",
+      "name": "Nisha",
+      "category": "Sales",
+      "createdAt": "2026-07-04T05:21:31.463Z"
+    },
+    {
+      "employeeId": "3",
+      "name": "Bhawna",
+      "category": "Sales",
+      "createdAt": "2026-07-04T05:21:46.964Z"
+    },
+    {
+      "employeeId": "4",
+      "name": "Sakshi",
+      "category": "Sales",
+      "createdAt": "2026-07-04T05:21:52.861Z"
+    },
+    {
+      "employeeId": "5",
+      "name": "Rajwant",
+      "category": "Sales",
+      "createdAt": "2026-07-04T05:22:09.508Z"
+    },
+    {
+      "employeeId": "6",
+      "name": "Suman",
+      "category": "Sales",
+      "createdAt": "2026-07-04T05:22:21.433Z"
+    },
+    {
+      "employeeId": "7",
+      "name": "Mamta",
+      "category": "Sales",
+      "createdAt": "2026-07-04T05:22:28.881Z"
+    },
+    {
+      "employeeId": "8",
+      "name": "Kajal",
+      "category": "Sales",
+      "createdAt": "2026-07-04T05:22:39.521Z"
+    },
+    {
+      "employeeId": "9",
+      "name": "Roshini",
+      "category": "Sales",
+      "createdAt": "2026-07-04T05:22:48.152Z",
+      "discipline": 10,
+      "attendance": 10,
+      "penalty": 0,
+      "penaltyComments": "",
+      "improvements": "",
+      "pickedItems": 0,
+      "kpiUpdatedAt": "2026-07-15T10:17:16.327Z",
+      "customerHandling": 10,
+      "billingAccuracy": 9,
+      "independentHandling": 9,
+      "followUpReport": 10,
+      "customerSatisfaction": 10,
+      "cleanliness": 10
+    }
+  ],
+  "feedback": [
+    {
+      "id": "aadli24i3",
+      "employeeId": "test_store_emp_99",
+      "counter": "Jack Godown",
+      "customerName": "Alice Miller",
+      "rating": 5,
+      "comment": "Super friendly and helped load everything fast!",
+      "createdAt": "2026-07-15T07:45:30.942Z"
+    }
+  ],
+  "admin": {
+    "email": "boss@fine.com",
+    "password": "boss123"
+  }
+}
