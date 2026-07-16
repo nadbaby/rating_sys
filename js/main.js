@@ -365,28 +365,40 @@ function getActiveDateRange() {
 async function loadAllData() {
   let employees = [];
   let feedbacks = [];
-  let useFb = true;
 
+  // Try fetching employees from Firestore first
   try {
     const empSnap = await getDocs(query(collection(db, "employees")));
     empSnap.forEach(doc => employees.push(doc.data()));
-    
-    const fbSnap = await getDocs(query(collection(db, "feedback")));
-    fbSnap.forEach(doc => feedbacks.push({ id: doc.id, ...doc.data() }));
   } catch (err) {
-    console.warn("Firestore data load failed, using local API:", err);
-    useFb = false;
+    console.warn("Firestore employees load failed, trying local API:", err);
   }
 
-  if (!useFb || employees.length === 0) {
+  // If Firestore employees failed or empty, fallback to local API
+  if (employees.length === 0) {
     try {
       const empRes = await fetch("/api/employees");
       if (empRes.ok) employees = await empRes.json();
-      
+    } catch (err) {
+      console.error("Local API employees fetch failed:", err);
+    }
+  }
+
+  // Try fetching feedback from Firestore first
+  try {
+    const fbSnap = await getDocs(query(collection(db, "feedback")));
+    fbSnap.forEach(doc => feedbacks.push({ id: doc.id, ...doc.data() }));
+  } catch (err) {
+    console.warn("Firestore feedback load failed, trying local API:", err);
+  }
+
+  // If Firestore feedback failed or empty, fallback to local API
+  if (feedbacks.length === 0) {
+    try {
       const fbRes = await fetch("/api/feedback");
       if (fbRes.ok) feedbacks = await fbRes.json();
     } catch (err) {
-      console.error("Local API fetch failed:", err);
+      console.error("Local API feedback fetch failed:", err);
     }
   }
 
