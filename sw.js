@@ -9,6 +9,7 @@ const ASSETS = [
   '/js/admin.js',
   '/js/theme.js',
   '/js/firebase-init.js',
+  '/firebase-config.js',
   '/manifest.json',
   '/icons/icon-192.png',
   '/icons/icon-512.png'
