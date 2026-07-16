@@ -1,4 +1,4 @@
-// js/admin.js
+﻿// js/admin.js
 // Handles admin login, authentication state, dashboard data fetching, analytics, employee directory, and CSV export.
 
 import { auth, db } from "./firebase-init.js";
@@ -2118,90 +2118,60 @@ if (document.getElementById("dashboardSection")) {
     // Wire Download PDF Button
     const downloadPdfBtn = document.getElementById("downloadPdfBtn");
     if (downloadPdfBtn) {
-      downloadPdfBtn.onclick = async () => {
+      downloadPdfBtn.onclick = () => {
         const printArea = document.getElementById("reportCardPrintArea");
         if (!printArea) return;
 
-        // Get employee name for the filename
         const empNameEl = printArea.querySelector("#rcEmpName");
         const empName = empNameEl ? empNameEl.textContent.trim() : "Employee";
         const empIdEl = printArea.querySelector("#rcEmpId");
         const empId = empIdEl ? empIdEl.textContent.trim() : "";
-        const filename = `Report_Card_${empName.replace(/\s+/g, "_")}${empId ? "_" + empId : ""}.pdf`;
+        const filename = `Report_Card_${empName.replace(/\s+/g, "_")}${empId ? "_" + empId : ""}`;
 
-        // Update button state
-        const originalHtml = downloadPdfBtn.innerHTML;
-        downloadPdfBtn.innerHTML = `<svg style="width:1rem;height:1rem;animation:spin 1s linear infinite" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg><span>Generating…</span>`;
-        downloadPdfBtn.disabled = true;
+        const cardHtml = printArea.innerHTML;
 
-        try {
-          // Temporarily force light background for clean PDF capture
-          const originalBg = printArea.style.background;
-          const originalColor = printArea.style.color;
-          printArea.style.background = "#ffffff";
-          printArea.style.color = "#1e293b";
-
-          const canvas = await html2canvas(printArea, {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: "#ffffff",
-            logging: false,
-            windowWidth: 700
-          });
-
-          // Restore styles
-          printArea.style.background = originalBg;
-          printArea.style.color = originalColor;
-
-          const { jsPDF } = window.jspdf;
-          const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-
-          const pageWidth = pdf.internal.pageSize.getWidth();
-          const pageHeight = pdf.internal.pageSize.getHeight();
-          const margin = 10;
-          const usableWidth = pageWidth - margin * 2;
-
-          const imgData = canvas.toDataURL("image/png");
-          const imgWidth = usableWidth;
-          const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-          // If content exceeds one page, split into multiple pages
-          let yOffset = margin;
-          let remainingHeight = imgHeight;
-
-          while (remainingHeight > 0) {
-            const sliceHeight = Math.min(remainingHeight, pageHeight - margin * 2);
-            const sourceY = (imgHeight - remainingHeight) * (canvas.height / imgHeight);
-            const sourceH = sliceHeight * (canvas.height / imgHeight);
-
-            const sliceCanvas = document.createElement("canvas");
-            sliceCanvas.width = canvas.width;
-            sliceCanvas.height = sourceH;
-            const sliceCtx = sliceCanvas.getContext("2d");
-            sliceCtx.drawImage(canvas, 0, sourceY, canvas.width, sourceH, 0, 0, canvas.width, sourceH);
-
-            const sliceData = sliceCanvas.toDataURL("image/png");
-            pdf.addImage(sliceData, "PNG", margin, yOffset, imgWidth, sliceHeight);
-
-            remainingHeight -= sliceHeight;
-            if (remainingHeight > 0) {
-              pdf.addPage();
-              yOffset = margin;
-            }
-          }
-
-          pdf.save(filename);
-          showToast(`PDF downloaded: ${filename}`);
-        } catch (err) {
-          console.error("PDF generation failed:", err);
-          alert("Could not generate PDF. Please try the Print button instead.");
-        } finally {
-          downloadPdfBtn.innerHTML = originalHtml;
-          downloadPdfBtn.disabled = false;
+        const printWindow = window.open("", "_blank", "width=820,height=1000,scrollbars=yes");
+        if (!printWindow) {
+          alert("Pop-up blocked. Please allow pop-ups for this site and try again.");
+          return;
         }
+
+        printWindow.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>${filename}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { background: #ffffff; color: #1e293b; font-family: 'Inter', system-ui, sans-serif; font-size: 14px; }
+    body { padding: 24px; max-width: 720px; margin: 0 auto; }
+    :root {
+      --color-primary: #ea580c;
+      --color-accent: #06b6d4;
+      --color-text-primary: #1e293b;
+      --color-text-secondary: #64748b;
+      --color-bg-card: #f8fafc;
+      --color-border: #e2e8f0;
+      --color-warning: #ef4444;
+    }
+    .report-card-container { background: #ffffff !important; }
+    table { width: 100%; border-collapse: collapse; }
+    .performance-status { display: inline-block; border-radius: 999px; padding: 0.3rem 0.8rem; font-size: 0.78rem; font-weight: 700; border: 1px solid; }
+    .status-excellent { background: rgba(34,197,94,0.12); color: #16a34a; border-color: rgba(34,197,94,0.35); }
+    .status-good { background: rgba(59,130,246,0.12); color: #2563eb; border-color: rgba(59,130,246,0.35); }
+    .status-average { background: rgba(234,179,8,0.12); color: #b45309; border-color: rgba(234,179,8,0.35); }
+    .status-warning { background: rgba(239,68,68,0.12); color: #dc2626; border-color: rgba(239,68,68,0.35); }
+    @media print { body { padding: 0; } @page { size: A4 portrait; margin: 12mm; } }
+  </style>
+</head>
+<body>${cardHtml}<script>window.onload=function(){setTimeout(function(){window.print();},700);};<\/script>
+</body>
+</html>`);
+        printWindow.document.close();
+        showToast("Choose 'Save as PDF' in the print dialog");
       };
     }
-
     // Wire Export CSV Button
     const btnExportCSV = document.getElementById("btnExportCSV");
     if (btnExportCSV) {
