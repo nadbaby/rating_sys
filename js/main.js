@@ -110,13 +110,16 @@ function updateEmployeeProgressUI(emp, range, feedbacks, employees) {
     });
   });
 
+  const hasKpi = emp.kpiUpdatedAt !== undefined && emp.kpiUpdatedAt !== null;
+  const { kpiAvg, penalty } = calculateKpi(emp, hasKpi);
+
   const ranked = employees.map(e => {
     const stats = empStats[e.employeeId] || { count: 0, sum: 0 };
     const custAvg = stats.count ? stats.sum / stats.count : 0;
-    const hasValidKpi = isKpiValidForRange(e.kpiUpdatedAt, range);
-    const { kpiAvg, penalty } = calculateKpi(e, hasValidKpi);
-    const finalScore = getBlendedScore(kpiAvg, penalty, custAvg, stats.count, hasValidKpi);
-    return { employeeId: e.employeeId, custAvg, kpiAvg, finalScore, reviewsCount: stats.count };
+    const eHasKpi = e.kpiUpdatedAt !== undefined && e.kpiUpdatedAt !== null;
+    const eKpi = calculateKpi(e, eHasKpi);
+    const finalScore = getBlendedScore(eKpi.kpiAvg, eKpi.penalty, custAvg, stats.count, eHasKpi);
+    return { employeeId: e.employeeId, custAvg, kpiAvg: eKpi.kpiAvg, finalScore, reviewsCount: stats.count };
   });
 
   ranked.sort((a, b) => {
@@ -130,9 +133,7 @@ function updateEmployeeProgressUI(emp, range, feedbacks, employees) {
 
   const stats = empStats[emp.employeeId] || { count: 0, sum: 0 };
   const custAvg = stats.count ? stats.sum / stats.count : 0;
-  const hasValidKpi = isKpiValidForRange(emp.kpiUpdatedAt, range);
-  const { kpiAvg, penalty } = calculateKpi(emp, hasValidKpi);
-  const finalScore = getBlendedScore(kpiAvg, penalty, custAvg, stats.count, hasValidKpi);
+  const finalScore = getBlendedScore(kpiAvg, penalty, custAvg, stats.count, hasKpi);
 
   document.getElementById('progressName').textContent = emp.name;
   document.getElementById('progressRole').textContent = emp.category || 'Sales';
@@ -146,9 +147,20 @@ function updateEmployeeProgressUI(emp, range, feedbacks, employees) {
   const endStr = formatDate(range.end);
   document.getElementById('empReportPeriodText').textContent = `Report Period: ${startStr} to ${endStr}`;
 
+  // Update KPI Section Title dynamically
+  const progressKpiTitle = document.getElementById('progressKpiTitle');
+  if (progressKpiTitle) {
+    if (hasKpi) {
+      const kpiDateStr = formatDate(emp.kpiUpdatedAt);
+      progressKpiTitle.textContent = `Detailed KPI Scores (Evaluated: ${kpiDateStr})`;
+    } else {
+      progressKpiTitle.textContent = `Detailed KPI Scores (No Evaluation)`;
+    }
+  }
+
   const deductionsBox = document.getElementById('progressDeductionsBox');
   const penaltyCommentsEl = document.getElementById('progressPenaltyComments');
-  if (hasValidKpi && emp.penaltyComments) {
+  if (hasKpi && emp.penaltyComments) {
     penaltyCommentsEl.textContent = emp.penaltyComments;
     deductionsBox.style.display = 'block';
   } else {
@@ -159,7 +171,7 @@ function updateEmployeeProgressUI(emp, range, feedbacks, employees) {
   progressKpiBody.innerHTML = '';
   
   const addProgressKpiRow = (metricName, scoreVal) => {
-    const numVal = (hasValidKpi && scoreVal !== undefined) ? Number(scoreVal) : 10.0;
+    const numVal = (hasKpi && scoreVal !== undefined) ? Number(scoreVal) : 10.0;
     const starsCount = Math.round(numVal / 2);
     const stars = '★'.repeat(starsCount) + '☆'.repeat(5 - starsCount);
     
@@ -168,7 +180,7 @@ function updateEmployeeProgressUI(emp, range, feedbacks, employees) {
       <td class="kpi-metric-name">${metricName}</td>
       <td class="kpi-metric-score">
         <span class="kpi-stars-preview">${stars}</span>
-        ${numVal.toFixed(1)}
+        ${hasKpi ? numVal.toFixed(1) : 'Pending'}
       </td>
     `;
     progressKpiBody.appendChild(row);
@@ -618,8 +630,9 @@ form.addEventListener('submit', async (e) => {
   }
 
   let saved = false;
+  let docRef = null;
   try {
-    await addDoc(collection(db, 'feedback'), {
+    docRef = await addDoc(collection(db, 'feedback'), {
       employeeId: currentEmployeeId,
       counter: currentCounterName,
       customerName: customerName || "Anonymous",
@@ -632,26 +645,26 @@ form.addEventListener('submit', async (e) => {
     console.warn('Firestore feedback save failed, trying local API:', err);
   }
 
-  if (!saved) {
-    try {
-      const res = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          employeeId: currentEmployeeId,
-          counter: currentCounterName,
-          customerName: customerName || "Anonymous",
-          rating: Number(rating),
-          comment: comment || null,
-          createdAt: new Date().toISOString()
-        })
-      });
-      if (res.ok) {
-        saved = true;
-      }
-    } catch (err) {
-      console.error('Local API save feedback failed:', err);
+  // Always sync submitted feedback to local API so it is immediately visible in local mode / employee portals
+  try {
+    const res = await fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: docRef ? docRef.id : Math.random().toString(36).substr(2, 9),
+        employeeId: currentEmployeeId,
+        counter: currentCounterName,
+        customerName: customerName || "Anonymous",
+        rating: Number(rating),
+        comment: comment || null,
+        createdAt: new Date().toISOString()
+      })
+    });
+    if (res.ok) {
+      saved = true;
     }
+  } catch (err) {
+    console.error('Local API save feedback failed:', err);
   }
 
   if (saved) {

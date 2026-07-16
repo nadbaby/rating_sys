@@ -1536,6 +1536,24 @@ if (document.getElementById("dashboardSection")) {
       cachedEmployees = employees;
       cachedFeedbacks = feedbacks;
       renderDashboard(feedbacks, employees);
+
+      if (useFirebase) {
+        try {
+          await fetch("/api/sync/employees", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ employees })
+          });
+          await fetch("/api/sync/feedback", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ feedbacks })
+          });
+          console.log("Local database successfully synced with Firestore.");
+        } catch (err) {
+          console.warn("Failed to sync Firestore data locally:", err);
+        }
+      }
     }
 
     // Render dashboard and directory elements

@@ -177,17 +177,54 @@ export const dbHelper = {
     if (!data.feedback) data.feedback = [];
 
     const newFeedback = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: feedback.id || Math.random().toString(36).substr(2, 9),
       employeeId: feedback.employeeId || null,
       counter: feedback.counter || "Unknown Counter",
       customerName: feedback.customerName || "Anonymous",
       rating: Number(feedback.rating),
       comment: feedback.comment || null,
-      createdAt: new Date().toISOString()
+      createdAt: feedback.createdAt || new Date().toISOString()
     };
 
     data.feedback.push(newFeedback);
     writeDb(data);
     return newFeedback;
+  },
+
+  syncEmployees(employeesList) {
+    const data = readDb();
+    if (!data.employees) data.employees = [];
+    
+    employeesList.forEach(emp => {
+      const idx = data.employees.findIndex(e => e.employeeId === emp.employeeId);
+      if (idx !== -1) {
+        data.employees[idx] = {
+          ...data.employees[idx],
+          ...emp
+        };
+      } else {
+        data.employees.push(emp);
+      }
+    });
+    
+    writeDb(data);
+    return true;
+  },
+
+  syncFeedback(feedbackList) {
+    const data = readDb();
+    if (!data.feedback) data.feedback = [];
+    
+    feedbackList.forEach(fb => {
+      const idx = data.feedback.findIndex(f => f.id === fb.id);
+      if (idx !== -1) {
+        data.feedback[idx] = fb;
+      } else {
+        data.feedback.push(fb);
+      }
+    });
+    
+    writeDb(data);
+    return true;
   }
 };

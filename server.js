@@ -131,6 +131,36 @@ app.post('/api/feedback', (req, res) => {
   }
 });
 
+// Sync employees list from Firestore
+app.post('/api/sync/employees', (req, res) => {
+  const { employees } = req.body;
+  if (!Array.isArray(employees)) {
+    return res.status(400).json({ error: "Employees array is required." });
+  }
+
+  try {
+    dbHelper.syncEmployees(employees);
+    res.json({ success: true, count: employees.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Sync feedback list from Firestore
+app.post('/api/sync/feedback', (req, res) => {
+  const { feedbacks } = req.body;
+  if (!Array.isArray(feedbacks)) {
+    return res.status(400).json({ error: "Feedbacks array is required." });
+  }
+
+  try {
+    dbHelper.syncFeedback(feedbacks);
+    res.json({ success: true, count: feedbacks.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ==================== Serve Static Frontend Files ====================
 
 // Serve static assets (js, css, images)
