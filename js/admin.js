@@ -1,4 +1,4 @@
-// js/admin.js
+﻿// js/admin.js
 // Handles admin login, authentication state, dashboard data fetching, analytics, employee directory, and CSV export.
 
 import { auth, db } from "./firebase-init.js";
@@ -1410,11 +1410,9 @@ if (document.getElementById("dashboardSection")) {
             }
 
             const setKpiValue = (inputId, valId, value) => {
-              const numVal = Math.round((hasValidKpi && value !== undefined) ? value : 10);
+              const numVal = (hasValidKpi && value !== undefined) ? Number(value) : 10;
               const input = document.getElementById(inputId);
               if (input) input.value = numVal;
-              const valLbl = document.getElementById(valId);
-              if (valLbl) valLbl.textContent = numVal;
               
               const group = document.querySelector(`[data-target="${inputId}"]`);
               if (group) {
@@ -2402,14 +2400,9 @@ if (document.getElementById("dashboardSection")) {
         if (e.target.tagName === "BUTTON") {
           const val = Number(e.target.getAttribute("data-val"));
           const targetInputId = group.getAttribute("data-target");
-          const labelId = group.getAttribute("data-val-lbl");
           
-          // Update hidden input
+          // Update input value and active button state
           document.getElementById(targetInputId).value = val;
-          // Update selected badge label
-          document.getElementById(labelId).textContent = val;
-          
-          // Update active button styling
           group.querySelectorAll("button").forEach(btn => btn.classList.remove("active"));
           e.target.classList.add("active");
         }
