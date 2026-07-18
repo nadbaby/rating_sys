@@ -555,65 +555,83 @@ async function init() {
   }
 
   if (empId) {
-    let employeeData = null;
-    let fallback = false;
-    try {
-      // Fetch employee details from Firestore
-      const docRef = doc(db, "employees", empId);
-      const docSnap = await getDoc(docRef);
+    // ── Cache helpers ──────────────────────────────────────────────
+    const CACHE_KEY = `emp_cache_${empId}`;
+    const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
-      if (docSnap.exists()) {
-        employeeData = docSnap.data();
-      } else {
-        // Employee ID doesn't exist
-        showError(`Employee with ID "${empId}" was not found in our directory.`);
-        return;
-      }
-    } catch (err) {
-      console.warn("Firestore employee fetch failed, trying local API:", err);
-      fallback = true;
-    }
-
-    if (fallback) {
+    function getCachedEmployee() {
       try {
-        const res = await fetch(`/api/employees`);
-        if (res.ok) {
-          const list = await res.json();
-          const emp = list.find(e => e.employeeId === empId);
-          if (emp) {
-            employeeData = emp;
-          } else {
-            showError(`Employee with ID "${empId}" was not found in our directory.`);
-            return;
-          }
-        } else {
-          showError("Could not retrieve employee details. Please try again later.");
-          return;
-        }
-      } catch (err) {
-        console.error("Local API employee fetch failed:", err);
-        showError("Could not retrieve employee details. Please try again later.");
-        return;
-      }
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) return null;
+        const { data, ts } = JSON.parse(raw);
+        if (Date.now() - ts > CACHE_TTL) { localStorage.removeItem(CACHE_KEY); return null; }
+        return data;
+      } catch { return null; }
     }
 
-    if (employeeData) {
+    function setCachedEmployee(data) {
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() })); } catch {}
+    }
+
+    function renderEmployee(employeeData) {
       currentEmployeeId = empId;
       currentCounterName = employeeData.name;
-
-      // Render employee profile
       employeeNameEl.textContent = employeeData.name;
       employeeBadge.textContent = `Employee ID: ${empId}`;
       employeeAvatar.textContent = employeeData.name.charAt(0).toUpperCase();
       employeeAvatar.style.background = 'linear-gradient(135deg, var(--color-primary), #fdba74)';
       employeeCard.style.display = 'flex';
-
       formTitle.textContent = `Rate your interaction with ${employeeData.name}`;
-
-      // Show form
       loadingCard.style.display = 'none';
       formContainer.style.display = 'block';
     }
+
+    // ── Step 1: Serve from cache immediately (zero network wait) ───
+    const cached = getCachedEmployee();
+    if (cached) {
+      renderEmployee(cached);
+      // Silently refresh cache in background — don't await
+      (async () => {
+        try {
+          const docSnap = await getDoc(doc(db, "employees", empId));
+          if (docSnap.exists()) setCachedEmployee(docSnap.data());
+        } catch {}
+      })();
+      return;
+    }
+
+    // ── Step 2: Cache miss — fetch from Firestore (first ever scan) ─
+    let employeeData = null;
+    try {
+      const docSnap = await getDoc(doc(db, "employees", empId));
+      if (docSnap.exists()) {
+        employeeData = docSnap.data();
+        setCachedEmployee(employeeData);
+      } else {
+        showError(`Employee with ID "${empId}" was not found in our directory.`);
+        return;
+      }
+    } catch (err) {
+      console.warn("Firestore fetch failed, trying local API:", err);
+      // Fallback to local API
+      try {
+        const res = await fetch(`/api/employees`);
+        if (res.ok) {
+          const list = await res.json();
+          const emp = list.find(e => e.employeeId === empId);
+          if (emp) { employeeData = emp; setCachedEmployee(emp); }
+          else { showError(`Employee with ID "${empId}" was not found.`); return; }
+        } else {
+          showError("Could not retrieve employee details. Please try again later.");
+          return;
+        }
+      } catch {
+        showError("Could not retrieve employee details. Please try again later.");
+        return;
+      }
+    }
+
+    if (employeeData) renderEmployee(employeeData);
   } else if (counterParam) {
     // Legacy support for counter query parameter
     currentEmployeeId = null;
