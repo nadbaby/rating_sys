@@ -6,6 +6,25 @@ import {
   doc, getDoc, collection, addDoc, serverTimestamp, getDocs, query 
 } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 
+// Timeout-safe Firestore wrapper — never hangs the UI forever
+function firestoreGet(ref, timeoutMs = 6000) {
+  return Promise.race([
+    getDoc(ref),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('firestore_timeout')), timeoutMs)
+    )
+  ]);
+}
+
+function firestoreGetDocs(q, timeoutMs = 6000) {
+  return Promise.race([
+    getDocs(q),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('firestore_timeout')), timeoutMs)
+    )
+  ]);
+}
+
 // Helper to get query param value
 function getQueryParam(param) {
   const urlParams = new URLSearchParams(window.location.search);
@@ -394,7 +413,7 @@ function getActiveDateRange() {
 async function loadEmployeesOnly() {
   let employees = [];
   const [fbResult, apiResult] = await Promise.allSettled([
-    getDocs(query(collection(db, "employees"))),
+    firestoreGetDocs(query(collection(db, "employees"))),
     fetch("/api/employees").then(r => r.ok ? r.json() : [])
   ]);
   if (fbResult.status === "fulfilled" && fbResult.value.size > 0) {
@@ -409,11 +428,11 @@ async function loadAllData() {
   let employees = [];
   let feedbacks = [];
 
-  // Fetch employees and feedback simultaneously
+  // Fetch employees and feedback simultaneously, with timeouts
   const [empFbResult, empApiResult, fbFbResult, fbApiResult] = await Promise.allSettled([
-    getDocs(query(collection(db, "employees"))),
+    firestoreGetDocs(query(collection(db, "employees"))),
     fetch("/api/employees").then(r => r.ok ? r.json() : []),
-    getDocs(query(collection(db, "feedback"))),
+    firestoreGetDocs(query(collection(db, "feedback"))),
     fetch("/api/feedback").then(r => r.ok ? r.json() : [])
   ]);
 
@@ -439,6 +458,13 @@ async function init() {
   const counterParam = getQueryParam('counter');
   const view = getQueryParam('view');
   const isProgressView = (view === 'progress' || view === 'report');
+
+  // ── No empId, no counter, no progress view → show welcome immediately ──
+  if (!empId && !counterParam && !isProgressView) {
+    loadingCard.style.display = 'none';
+    if (welcomeCard) welcomeCard.style.display = 'flex';
+    return;
+  }
 
   if (isProgressView) {
     loadingCard.style.display = 'none';
@@ -470,31 +496,21 @@ async function init() {
     if (empId && !cachedEmpId) {
       try {
         let employeeData = null;
-        let fallback = false;
         try {
-          const docRef = doc(db, "employees", empId);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            employeeData = docSnap.data();
-          } else {
-            fallback = true;
-          }
+          const docSnap = await firestoreGet(doc(db, "employees", empId));
+          if (docSnap.exists()) employeeData = docSnap.data();
         } catch (err) {
-          fallback = true;
+          // Firestore timeout or error — try local API
+          try {
+            const res = await fetch(`/api/employees`);
+            if (res.ok) {
+              const list = await res.json();
+              const emp = list.find(e => e.employeeId === empId);
+              if (emp) employeeData = emp;
+            }
+          } catch {}
         }
-
-        if (fallback) {
-          const res = await fetch(`/api/employees`);
-          if (res.ok) {
-            const list = await res.json();
-            const emp = list.find(e => e.employeeId === empId);
-            if (emp) employeeData = emp;
-          }
-        }
-
-        if (employeeData) {
-          loginNameInput.value = employeeData.name;
-        }
+        if (employeeData) loginNameInput.value = employeeData.name;
       } catch (err) {
         console.warn("Failed to pre-fill name:", err);
       }
@@ -603,7 +619,7 @@ async function init() {
     // ── Step 2: Cache miss — fetch from Firestore (first ever scan) ─
     let employeeData = null;
     try {
-      const docSnap = await getDoc(doc(db, "employees", empId));
+      const docSnap = await firestoreGet(doc(db, "employees", empId));
       if (docSnap.exists()) {
         employeeData = docSnap.data();
         setCachedEmployee(employeeData);
@@ -678,7 +694,8 @@ if (form && ratingDesc) {
   });
 }
 
-form.addEventListener('submit', async (e) => {
+if (form) {
+  form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const rating = form.rating.value;
   const comment = form.comment.value.trim();
@@ -728,12 +745,13 @@ form.addEventListener('submit', async (e) => {
   }
 
   if (saved) {
-    formContainer.style.display = 'none';
-    thankYou.style.display = 'flex';
-  } else {
-    alert('Something went wrong. Please try again later.');
-  }
-});
+      formContainer.style.display = 'none';
+      thankYou.style.display = 'flex';
+    } else {
+      alert('Something went wrong. Please try again later.');
+    }
+  });
+}
 
 // Run init
 init();

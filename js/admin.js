@@ -7,6 +7,20 @@ import {
   collection, query, where, orderBy, getDocs, Timestamp, doc, getDoc, setDoc, deleteDoc, serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 
+// Timeout-safe Firestore wrappers — prevent infinite hangs on slow/unreachable Firestore
+function fsGet(ref, ms = 8000) {
+  return Promise.race([
+    getDoc(ref),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('fs_timeout')), ms))
+  ]);
+}
+function fsGetDocs(q, ms = 8000) {
+  return Promise.race([
+    getDocs(q),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('fs_timeout')), ms))
+  ]);
+}
+
 function parseDate(ts) {
   if (!ts) return null;
   if (ts.toDate && typeof ts.toDate === "function") {
@@ -110,7 +124,7 @@ if (document.getElementById("loginForm")) {
       // Race Firestore and local API — use whichever responds first with data
       try {
         const [fbResult, apiResult] = await Promise.allSettled([
-          getDocs(collection(db, "employees")),
+          fsGetDocs(collection(db, "employees")),
           fetch("/api/employees").then(r => r.ok ? r.json() : [])
         ]);
 
@@ -1490,7 +1504,7 @@ if (document.getElementById("dashboardSection")) {
           if (toDate) constraints.push(where("createdAt", "<=", Timestamp.fromDate(new Date(toDate))));
           if (constraints.length) q = query(q, ...constraints, orderBy("createdAt", "desc"));
           else q = query(q, orderBy("createdAt", "desc"));
-          const snapshot = await getDocs(q);
+          const snapshot = await fsGetDocs(q);
           const feedbacks = [];
           snapshot.forEach((doc) => {
             const data = doc.data();
@@ -1523,12 +1537,11 @@ if (document.getElementById("dashboardSection")) {
       if (useFirebase) {
         try {
           const q = query(collection(db, "employees"), orderBy("createdAt", "desc"));
-          const snapshot = await getDocs(q);
+          const snapshot = await fsGetDocs(q);
           const employees = [];
           snapshot.forEach((doc) => {
             employees.push(doc.data());
           });
-          // If Firestore is connected but empty, check if we should fall back to local API
           if (employees.length > 0) {
             return employees;
           }
