@@ -244,6 +244,29 @@
 
   <script type="module" src="js/main.js"></script>
   <script>
+    // Safety fallback: if main.js module never loads (e.g. Firebase CDN hangs),
+    // hide the spinner after 10 seconds so the user isn't stuck forever.
+    window.__mainJsLoaded = false;
+    setTimeout(function() {
+      if (window.__mainJsLoaded) return;
+      var lc = document.getElementById('loadingCard');
+      if (lc && lc.style.display !== 'none') {
+        lc.style.display = 'none';
+        // Check if we have query params — show error or welcome
+        var params = new URLSearchParams(window.location.search);
+        if (params.get('empId') || params.get('counter') || params.get('view')) {
+          var ec = document.getElementById('errorCard');
+          var em = document.getElementById('errorMessage');
+          if (ec) { ec.style.display = 'flex'; }
+          if (em) { em.textContent = 'Could not load the page. Please check your internet connection and try again.'; }
+        } else {
+          var wc = document.getElementById('welcomeCard');
+          if (wc) wc.style.display = 'flex';
+        }
+      }
+    }, 10000);
+  </script>
+  <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')

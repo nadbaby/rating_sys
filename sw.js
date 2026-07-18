@@ -1,6 +1,6 @@
 // sw.js — Cache-First with Background Revalidation (Stale-While-Revalidate)
 // Version bump to bust old cache
-const CACHE_NAME = 'feedback-portal-v3';
+const CACHE_NAME = 'feedback-portal-v4';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

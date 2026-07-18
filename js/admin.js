@@ -121,17 +121,17 @@ if (document.getElementById("loginForm")) {
       const empName = email;
       let employees = [];
 
-      // Race Firestore and local API — use whichever responds first with data
+      // Race Firestore and local API — prefer local API (fast localhost)
       try {
         const [fbResult, apiResult] = await Promise.allSettled([
           fsGetDocs(collection(db, "employees")),
           fetch("/api/employees").then(r => r.ok ? r.json() : [])
         ]);
 
-        if (fbResult.status === "fulfilled" && fbResult.value.size > 0) {
-          fbResult.value.forEach((doc) => employees.push({ id: doc.id, ...doc.data() }));
-        } else if (apiResult.status === "fulfilled" && Array.isArray(apiResult.value) && apiResult.value.length > 0) {
+        if (apiResult.status === "fulfilled" && Array.isArray(apiResult.value) && apiResult.value.length > 0) {
           employees = apiResult.value;
+        } else if (fbResult.status === "fulfilled" && fbResult.value.size > 0) {
+          fbResult.value.forEach((doc) => employees.push({ id: doc.id, ...doc.data() }));
         }
       } catch (err) {
         console.warn("Employee fetch error during login:", err);
@@ -168,12 +168,16 @@ if (document.getElementById("loginForm")) {
         }).then(r => r.ok ? r.json() : null)
       ]);
 
+      // Always save local token if available (as backup for Firebase auth)
+      if (localResult.status === "fulfilled" && localResult.value?.success) {
+        sessionStorage.setItem("local_token", localResult.value.token);
+      }
+
       if (fbResult.status === "fulfilled") {
         sessionStorage.setItem("auth_mode", "firebase");
         loggedIn = true;
       } else if (localResult.status === "fulfilled" && localResult.value?.success) {
         sessionStorage.setItem("auth_mode", "local");
-        sessionStorage.setItem("local_token", localResult.value.token);
         loggedIn = true;
       }
     } catch (err) {
@@ -193,6 +197,15 @@ if (document.getElementById("loginForm")) {
 
 // ==================== Dashboard Page Logic (admin.html) ====================
 if (document.getElementById("dashboardSection")) {
+  let dashboardInitialized = false;
+
+  function startDashboard(firebaseMode) {
+    if (dashboardInitialized) return;
+    dashboardInitialized = true;
+    useFirebase = firebaseMode;
+    initDashboard();
+  }
+
   const authMode = sessionStorage.getItem("auth_mode");
   
   if (authMode === "local") {
@@ -200,24 +213,41 @@ if (document.getElementById("dashboardSection")) {
     if (!token) {
       window.location.href = "login.html";
     } else {
-      useFirebase = false;
-      initDashboard();
+      startDashboard(false);
     }
   } else {
-    // Default to Firebase Auth check
+    // Firebase Auth check with timeout to prevent infinite loading
+    let authResolved = false;
+    
+    const authTimeout = setTimeout(() => {
+      if (authResolved) return;
+      authResolved = true;
+      // Firebase took too long — check local token as fallback
+      const localToken = sessionStorage.getItem("local_token");
+      if (localToken) {
+        sessionStorage.setItem("auth_mode", "local");
+        startDashboard(false);
+      } else {
+        window.location.href = "login.html";
+      }
+    }, 6000); // 6 second timeout
+
     onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        // Double check local token as backup
+      if (authResolved) return;
+      authResolved = true;
+      clearTimeout(authTimeout);
+      
+      if (user) {
+        startDashboard(true);
+      } else {
+        // Firebase says no user — check local token as backup
         const localToken = sessionStorage.getItem("local_token");
         if (localToken) {
-          useFirebase = false;
-          initDashboard();
+          sessionStorage.setItem("auth_mode", "local");
+          startDashboard(false);
         } else {
           window.location.href = "login.html";
         }
-      } else {
-        useFirebase = true;
-        initDashboard();
       }
     });
   }
@@ -1492,10 +1522,26 @@ if (document.getElementById("dashboardSection")) {
     }
 
     // Load feedback data (with optional date filter)
+    // Try local API first (fast), then Firestore if no results
     async function loadData() {
       const fromDate = document.getElementById("dateFrom").value;
       const toDate = document.getElementById("dateTo").value;
       
+      // Try local API first (always fast — it's localhost)
+      try {
+        let url = `/api/feedback?`;
+        if (fromDate) url += `dateFrom=${encodeURIComponent(fromDate)}&`;
+        if (toDate) url += `dateTo=${encodeURIComponent(toDate)}&`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const localFeedbacks = await res.json();
+          if (localFeedbacks.length > 0) return localFeedbacks;
+        }
+      } catch (err) {
+        console.warn("Local API loadData failed:", err);
+      }
+
+      // Fallback to Firestore if local API had no data
       if (useFirebase) {
         try {
           let q = collection(db, "feedback");
@@ -1512,28 +1558,27 @@ if (document.getElementById("dashboardSection")) {
           });
           return feedbacks;
         } catch (err) {
-          console.warn("Firebase loadData failed, falling back to local API:", err);
-          useFirebase = false;
+          console.warn("Firebase loadData also failed:", err);
         }
-      }
-      
-      // Fallback local API
-      try {
-        let url = `/api/feedback?`;
-        if (fromDate) url += `fromDate=${encodeURIComponent(fromDate)}&`;
-        if (toDate) url += `toDate=${encodeURIComponent(toDate)}&`;
-        const res = await fetch(url);
-        if (res.ok) {
-          return await res.json();
-        }
-      } catch (err) {
-        console.error("Local API loadData failed:", err);
       }
       return [];
     }
 
     // Load employee directory
+    // Try local API first (fast), then Firestore if no results
     async function loadEmployees() {
+      // Try local API first (always fast — it's localhost)
+      try {
+        const res = await fetch("/api/employees");
+        if (res.ok) {
+          const localEmployees = await res.json();
+          if (localEmployees.length > 0) return localEmployees;
+        }
+      } catch (err) {
+        console.warn("Local API loadEmployees failed:", err);
+      }
+
+      // Fallback to Firestore if local API had no data
       if (useFirebase) {
         try {
           const q = query(collection(db, "employees"), orderBy("createdAt", "desc"));
@@ -1542,24 +1587,10 @@ if (document.getElementById("dashboardSection")) {
           snapshot.forEach((doc) => {
             employees.push(doc.data());
           });
-          if (employees.length > 0) {
-            return employees;
-          }
-          console.warn("Firebase returned 0 employees, checking local API...");
+          return employees;
         } catch (err) {
-          console.warn("Firebase loadEmployees failed, falling back to local API:", err);
-          useFirebase = false;
+          console.warn("Firebase loadEmployees also failed:", err);
         }
-      }
-      
-      // Fallback local API
-      try {
-        const res = await fetch("/api/employees");
-        if (res.ok) {
-          return await res.json();
-        }
-      } catch (err) {
-        console.error("Local API loadEmployees failed:", err);
       }
       return [];
     }

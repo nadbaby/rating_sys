@@ -6,6 +6,9 @@ import {
   doc, getDoc, collection, addDoc, serverTimestamp, getDocs, query 
 } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 
+// Signal to the HTML fallback timeout that this module loaded OK
+if (typeof window !== 'undefined') window.__mainJsLoaded = true;
+
 // Timeout-safe Firestore wrapper — never hangs the UI forever
 function firestoreGet(ref, timeoutMs = 6000) {
   return Promise.race([
@@ -237,7 +240,6 @@ function updateEmployeeProgressUI(emp, range, feedbacks, employees) {
   addProgressKpiRow("Discipline", emp.discipline);
   addProgressKpiRow("Attendance", emp.attendance);
 
-  const normCategory = getNormalizedCategory(emp.category);
   if (normCategory === "Sales") {
     addProgressKpiRow("Customer Handling", emp.customerHandling);
     addProgressKpiRow("Billing Accuracy", emp.billingAccuracy);
@@ -416,10 +418,11 @@ async function loadEmployeesOnly() {
     firestoreGetDocs(query(collection(db, "employees"))),
     fetch("/api/employees").then(r => r.ok ? r.json() : [])
   ]);
-  if (fbResult.status === "fulfilled" && fbResult.value.size > 0) {
-    fbResult.value.forEach(doc => employees.push(doc.data()));
-  } else if (apiResult.status === "fulfilled" && Array.isArray(apiResult.value) && apiResult.value.length > 0) {
+  // Prefer local API (fast localhost) over Firestore
+  if (apiResult.status === "fulfilled" && Array.isArray(apiResult.value) && apiResult.value.length > 0) {
     employees = apiResult.value;
+  } else if (fbResult.status === "fulfilled" && fbResult.value.size > 0) {
+    fbResult.value.forEach(doc => employees.push(doc.data()));
   }
   return employees;
 }
@@ -436,18 +439,18 @@ async function loadAllData() {
     fetch("/api/feedback").then(r => r.ok ? r.json() : [])
   ]);
 
-  // Resolve employees: prefer Firestore, fallback to local API
-  if (empFbResult.status === "fulfilled" && empFbResult.value.size > 0) {
-    empFbResult.value.forEach(doc => employees.push(doc.data()));
-  } else if (empApiResult.status === "fulfilled" && Array.isArray(empApiResult.value) && empApiResult.value.length > 0) {
+  // Resolve employees: prefer local API (fast), fallback to Firestore
+  if (empApiResult.status === "fulfilled" && Array.isArray(empApiResult.value) && empApiResult.value.length > 0) {
     employees = empApiResult.value;
+  } else if (empFbResult.status === "fulfilled" && empFbResult.value.size > 0) {
+    empFbResult.value.forEach(doc => employees.push(doc.data()));
   }
 
-  // Resolve feedbacks: prefer Firestore, fallback to local API
-  if (fbFbResult.status === "fulfilled" && fbFbResult.value.size > 0) {
-    fbFbResult.value.forEach(doc => feedbacks.push({ id: doc.id, ...doc.data() }));
-  } else if (fbApiResult.status === "fulfilled" && Array.isArray(fbApiResult.value) && fbApiResult.value.length > 0) {
+  // Resolve feedbacks: prefer local API (fast), fallback to Firestore
+  if (fbApiResult.status === "fulfilled" && Array.isArray(fbApiResult.value) && fbApiResult.value.length > 0) {
     feedbacks = fbApiResult.value;
+  } else if (fbFbResult.status === "fulfilled" && fbFbResult.value.size > 0) {
+    fbFbResult.value.forEach(doc => feedbacks.push({ id: doc.id, ...doc.data() }));
   }
 
   return { employees, feedbacks };
@@ -496,18 +499,20 @@ async function init() {
     if (empId && !cachedEmpId) {
       try {
         let employeeData = null;
+        // Try local API first (fast, localhost)
         try {
-          const docSnap = await firestoreGet(doc(db, "employees", empId));
-          if (docSnap.exists()) employeeData = docSnap.data();
-        } catch (err) {
-          // Firestore timeout or error — try local API
+          const res = await fetch(`/api/employees`);
+          if (res.ok) {
+            const list = await res.json();
+            const emp = list.find(e => e.employeeId === empId);
+            if (emp) employeeData = emp;
+          }
+        } catch {}
+        // Fallback to Firestore if local API didn't have data
+        if (!employeeData) {
           try {
-            const res = await fetch(`/api/employees`);
-            if (res.ok) {
-              const list = await res.json();
-              const emp = list.find(e => e.employeeId === empId);
-              if (emp) employeeData = emp;
-            }
+            const docSnap = await firestoreGet(doc(db, "employees", empId));
+            if (docSnap.exists()) employeeData = docSnap.data();
           } catch {}
         }
         if (employeeData) loginNameInput.value = employeeData.name;
@@ -616,38 +621,39 @@ async function init() {
       return;
     }
 
-    // ── Step 2: Cache miss — fetch from Firestore (first ever scan) ─
+    // ── Step 2: Cache miss — try local API first (fast), then Firestore ─
     let employeeData = null;
+
+    // Try local API first (instant — it's on localhost)
     try {
-      const docSnap = await firestoreGet(doc(db, "employees", empId));
-      if (docSnap.exists()) {
-        employeeData = docSnap.data();
-        setCachedEmployee(employeeData);
-      } else {
-        showError(`Employee with ID "${empId}" was not found in our directory.`);
-        return;
+      const res = await fetch(`/api/employees`);
+      if (res.ok) {
+        const list = await res.json();
+        const emp = list.find(e => e.employeeId === empId);
+        if (emp) { employeeData = emp; setCachedEmployee(emp); }
       }
-    } catch (err) {
-      console.warn("Firestore fetch failed, trying local API:", err);
-      // Fallback to local API
+    } catch (localErr) {
+      console.warn("Local API fetch failed:", localErr);
+    }
+
+    // Fallback to Firestore if local API didn't have data
+    if (!employeeData) {
       try {
-        const res = await fetch(`/api/employees`);
-        if (res.ok) {
-          const list = await res.json();
-          const emp = list.find(e => e.employeeId === empId);
-          if (emp) { employeeData = emp; setCachedEmployee(emp); }
-          else { showError(`Employee with ID "${empId}" was not found.`); return; }
-        } else {
-          showError("Could not retrieve employee details. Please try again later.");
-          return;
+        const docSnap = await firestoreGet(doc(db, "employees", empId));
+        if (docSnap.exists()) {
+          employeeData = docSnap.data();
+          setCachedEmployee(employeeData);
         }
-      } catch {
-        showError("Could not retrieve employee details. Please try again later.");
-        return;
+      } catch (err) {
+        console.warn("Firestore fetch also failed:", err);
       }
     }
 
-    if (employeeData) renderEmployee(employeeData);
+    if (employeeData) {
+      renderEmployee(employeeData);
+    } else {
+      showError(`Employee with ID "${empId}" was not found.`);
+    }
   } else if (counterParam) {
     // Legacy support for counter query parameter
     currentEmployeeId = null;
