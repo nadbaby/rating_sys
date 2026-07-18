@@ -15,7 +15,15 @@ const PORT = process.env.PORT || 8000;
 
 // Enable CORS and JSON parsing
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
+
+// Add caching headers middleware for static assets
+function setStaticCacheHeaders(maxAge) {
+  return (req, res, next) => {
+    res.setHeader('Cache-Control', `public, max-age=${maxAge}, stale-while-revalidate=60`);
+    next();
+  };
+}
 
 // Initialize database
 dbHelper.init();
@@ -163,39 +171,49 @@ app.post('/api/sync/feedback', (req, res) => {
 
 // ==================== Serve Static Frontend Files ====================
 
-// Serve static assets (js, css, images)
-app.use('/js', express.static(path.join(__dirname, 'js')));
-app.use('/css', express.static(path.join(__dirname, 'css')));
-app.use('/icons', express.static(path.join(__dirname, 'icons')));
+// Serve static JS/CSS/icon assets with long-lived caching (7 days)
+const STATIC_MAX_AGE = 60 * 60 * 24 * 7; // 7 days in seconds
+app.use('/js', setStaticCacheHeaders(STATIC_MAX_AGE), express.static(path.join(__dirname, 'js')));
+app.use('/css', setStaticCacheHeaders(STATIC_MAX_AGE), express.static(path.join(__dirname, 'css')));
+app.use('/icons', setStaticCacheHeaders(STATIC_MAX_AGE), express.static(path.join(__dirname, 'icons')));
 
-app.get('/manifest.json', (req, res) => {
+app.get('/manifest.json', setStaticCacheHeaders(3600), (req, res) => {
   res.sendFile(path.join(__dirname, 'manifest.json'));
 });
 
+// Service worker must NOT be cached (browsers enforce this)
 app.get('/sw.js', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache');
   res.sendFile(path.join(__dirname, 'sw.js'));
 });
 
 // Serve firebase-config.js specifically
-app.get('/firebase-config.js', (req, res) => {
+app.get('/firebase-config.js', setStaticCacheHeaders(3600), (req, res) => {
   res.sendFile(path.join(__dirname, 'firebase-config.js'));
 });
 
+// Serve HTML pages with short cache (revalidate on every visit)
+const HTML_CACHE = 'no-cache';
+
 // Serve index.html as homepage
 app.get('/', (req, res) => {
+  res.setHeader('Cache-Control', HTML_CACHE);
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // Serve other HTML pages directly
 app.get('/index.html', (req, res) => {
+  res.setHeader('Cache-Control', HTML_CACHE);
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.get('/admin.html', (req, res) => {
+  res.setHeader('Cache-Control', HTML_CACHE);
   res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
 app.get('/login.html', (req, res) => {
+  res.setHeader('Cache-Control', HTML_CACHE);
   res.sendFile(path.join(__dirname, 'login.html'));
 });
 

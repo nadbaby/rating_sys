@@ -1,4 +1,4 @@
-﻿// js/admin.js
+// js/admin.js
 // Handles admin login, authentication state, dashboard data fetching, analytics, employee directory, and CSV export.
 
 import { auth, db } from "./firebase-init.js";
@@ -88,46 +88,45 @@ let useFirebase = true;
 if (document.getElementById("loginForm")) {
   const loginForm = document.getElementById("loginForm");
   const errorDiv = document.getElementById("loginError");
+  const submitBtn = loginForm.querySelector("button[type='submit']");
+
   loginForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
 
+    // Disable button to prevent duplicate submissions
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Signing in...";
+    errorDiv.style.display = "none";
+
     const isEmployeeAttempt = !email.includes("@");
 
     if (isEmployeeAttempt) {
-      // Treat email field as employee name
       const empName = email;
       let employees = [];
 
-      // Try reading from Firebase
+      // Race Firestore and local API — use whichever responds first with data
       try {
-        const querySnapshot = await getDocs(collection(db, "employees"));
-        querySnapshot.forEach((doc) => {
-          employees.push({ id: doc.id, ...doc.data() });
-        });
-      } catch (err) {
-        console.warn("Firestore employee fetch failed during login, trying local API:", err);
-      }
+        const [fbResult, apiResult] = await Promise.allSettled([
+          getDocs(collection(db, "employees")),
+          fetch("/api/employees").then(r => r.ok ? r.json() : [])
+        ]);
 
-      // Try local API fallback
-      if (employees.length === 0) {
-        try {
-          const res = await fetch("/api/employees");
-          if (res.ok) {
-            employees = await res.json();
-          }
-        } catch (err) {
-          console.error("Local API fetch failed during login:", err);
+        if (fbResult.status === "fulfilled" && fbResult.value.size > 0) {
+          fbResult.value.forEach((doc) => employees.push({ id: doc.id, ...doc.data() }));
+        } else if (apiResult.status === "fulfilled" && Array.isArray(apiResult.value) && apiResult.value.length > 0) {
+          employees = apiResult.value;
         }
+      } catch (err) {
+        console.warn("Employee fetch error during login:", err);
       }
 
-      // Look up employee by name (case-insensitive and trimmed)
       const emp = employees.find(e => e.name.trim().toLowerCase() === empName.toLowerCase());
       if (emp) {
         const expectedPass = emp.name.trim().toLowerCase() + '123';
         if (password.trim().toLowerCase() === expectedPass) {
-          // Redirect them to index.html with view=progress and their employeeId
           let baseUrl = window.location.href.split('?')[0];
           baseUrl = baseUrl.replace('login.html', 'index.html');
           window.location.href = `${baseUrl}?empId=${encodeURIComponent(emp.employeeId || emp.id)}&view=progress`;
@@ -137,39 +136,34 @@ if (document.getElementById("loginForm")) {
 
       errorDiv.style.display = "block";
       errorDiv.textContent = "Invalid employee name or password.";
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
       return;
     }
     
     let loggedIn = false;
     
-    // First try Firebase Auth
+    // Race Firebase Auth and local API login in parallel
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      loggedIn = true;
-      sessionStorage.setItem("auth_mode", "firebase");
-    } catch (err) {
-      console.warn("Firebase Auth login failed, trying local API:", err);
-    }
-    
-    // Fallback to local API
-    if (!loggedIn) {
-      try {
-        const res = await fetch("/api/auth/login", {
+      const [fbResult, localResult] = await Promise.allSettled([
+        signInWithEmailAndPassword(auth, email, password),
+        fetch("/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password })
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success) {
-            sessionStorage.setItem("auth_mode", "local");
-            sessionStorage.setItem("local_token", data.token);
-            loggedIn = true;
-          }
-        }
-      } catch (err) {
-        console.error("Local login failed:", err);
+        }).then(r => r.ok ? r.json() : null)
+      ]);
+
+      if (fbResult.status === "fulfilled") {
+        sessionStorage.setItem("auth_mode", "firebase");
+        loggedIn = true;
+      } else if (localResult.status === "fulfilled" && localResult.value?.success) {
+        sessionStorage.setItem("auth_mode", "local");
+        sessionStorage.setItem("local_token", localResult.value.token);
+        loggedIn = true;
       }
+    } catch (err) {
+      console.error("Login error:", err);
     }
     
     if (loggedIn) {
@@ -177,6 +171,8 @@ if (document.getElementById("loginForm")) {
     } else {
       errorDiv.style.display = "block";
       errorDiv.textContent = "Invalid email or password.";
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
     }
   });
 }
@@ -1557,36 +1553,41 @@ if (document.getElementById("dashboardSection")) {
 
     // Refresh entire data & view
     async function refreshDashboardAndEmployees() {
-      const feedbacks = await loadData();
-      const employees = await loadEmployees();
+      // Parallelize both fetches so they run simultaneously
+      const [feedbacks, employees] = await Promise.all([loadData(), loadEmployees()]);
       cachedEmployees = employees;
       cachedFeedbacks = feedbacks;
       renderDashboard(feedbacks, employees);
 
+      // Background sync — fire and forget, does NOT block the UI
       if (useFirebase) {
-        try {
-          await fetch("/api/sync/employees", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ employees })
-          });
-          
-          // Fetch ALL feedbacks from Firestore for complete sync
-          const allFbSnap = await getDocs(collection(db, "feedback"));
-          const allFeedbacks = [];
-          allFbSnap.forEach((doc) => {
-            allFeedbacks.push({ id: doc.id, ...doc.data() });
-          });
+        (async () => {
+          try {
+            // Sync employees and ALL feedbacks in parallel
+            const allFbSnapPromise = getDocs(collection(db, "feedback"));
+            const syncEmpPromise = fetch("/api/sync/employees", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ employees })
+            });
 
-          await fetch("/api/sync/feedback", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ feedbacks: allFeedbacks })
-          });
-          console.log("Local database successfully synced with ALL Firestore feedbacks.");
-        } catch (err) {
-          console.warn("Failed to sync Firestore data locally:", err);
-        }
+            const [allFbSnap] = await Promise.all([allFbSnapPromise, syncEmpPromise]);
+
+            const allFeedbacks = [];
+            allFbSnap.forEach((doc) => {
+              allFeedbacks.push({ id: doc.id, ...doc.data() });
+            });
+
+            await fetch("/api/sync/feedback", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ feedbacks: allFeedbacks })
+            });
+            console.log("Background sync: local DB synced with Firestore.");
+          } catch (err) {
+            console.warn("Background sync failed:", err);
+          }
+        })();
       }
     }
 

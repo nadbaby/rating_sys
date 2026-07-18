@@ -390,44 +390,45 @@ function getActiveDateRange() {
   return { start, end };
 }
 
+// Fetch only employees (faster, used for login credential check)
+async function loadEmployeesOnly() {
+  let employees = [];
+  const [fbResult, apiResult] = await Promise.allSettled([
+    getDocs(query(collection(db, "employees"))),
+    fetch("/api/employees").then(r => r.ok ? r.json() : [])
+  ]);
+  if (fbResult.status === "fulfilled" && fbResult.value.size > 0) {
+    fbResult.value.forEach(doc => employees.push(doc.data()));
+  } else if (apiResult.status === "fulfilled" && Array.isArray(apiResult.value) && apiResult.value.length > 0) {
+    employees = apiResult.value;
+  }
+  return employees;
+}
+
 async function loadAllData() {
   let employees = [];
   let feedbacks = [];
 
-  // Try fetching employees from Firestore first
-  try {
-    const empSnap = await getDocs(query(collection(db, "employees")));
-    empSnap.forEach(doc => employees.push(doc.data()));
-  } catch (err) {
-    console.warn("Firestore employees load failed, trying local API:", err);
+  // Fetch employees and feedback simultaneously
+  const [empFbResult, empApiResult, fbFbResult, fbApiResult] = await Promise.allSettled([
+    getDocs(query(collection(db, "employees"))),
+    fetch("/api/employees").then(r => r.ok ? r.json() : []),
+    getDocs(query(collection(db, "feedback"))),
+    fetch("/api/feedback").then(r => r.ok ? r.json() : [])
+  ]);
+
+  // Resolve employees: prefer Firestore, fallback to local API
+  if (empFbResult.status === "fulfilled" && empFbResult.value.size > 0) {
+    empFbResult.value.forEach(doc => employees.push(doc.data()));
+  } else if (empApiResult.status === "fulfilled" && Array.isArray(empApiResult.value) && empApiResult.value.length > 0) {
+    employees = empApiResult.value;
   }
 
-  // If Firestore employees failed or empty, fallback to local API
-  if (employees.length === 0) {
-    try {
-      const empRes = await fetch("/api/employees");
-      if (empRes.ok) employees = await empRes.json();
-    } catch (err) {
-      console.error("Local API employees fetch failed:", err);
-    }
-  }
-
-  // Try fetching feedback from Firestore first
-  try {
-    const fbSnap = await getDocs(query(collection(db, "feedback")));
-    fbSnap.forEach(doc => feedbacks.push({ id: doc.id, ...doc.data() }));
-  } catch (err) {
-    console.warn("Firestore feedback load failed, trying local API:", err);
-  }
-
-  // If Firestore feedback failed or empty, fallback to local API
-  if (feedbacks.length === 0) {
-    try {
-      const fbRes = await fetch("/api/feedback");
-      if (fbRes.ok) feedbacks = await fbRes.json();
-    } catch (err) {
-      console.error("Local API feedback fetch failed:", err);
-    }
+  // Resolve feedbacks: prefer Firestore, fallback to local API
+  if (fbFbResult.status === "fulfilled" && fbFbResult.value.size > 0) {
+    fbFbResult.value.forEach(doc => feedbacks.push({ id: doc.id, ...doc.data() }));
+  } else if (fbApiResult.status === "fulfilled" && Array.isArray(fbApiResult.value) && fbApiResult.value.length > 0) {
+    feedbacks = fbApiResult.value;
   }
 
   return { employees, feedbacks };
@@ -512,7 +513,8 @@ async function init() {
       submitBtn.textContent = 'Verifying...';
 
       try {
-        const { employees } = await loadAllData();
+        // Only fetch employees to verify credentials (much faster than loading all data)
+        const employees = await loadEmployeesOnly();
         
         // Find employee by name (case-insensitive and trimmed)
         const emp = employees.find(e => e.name.trim().toLowerCase() === enteredName.toLowerCase());
@@ -524,7 +526,7 @@ async function init() {
           return;
         }
 
-        // Expected password: name + '123' (case-insensitive name + '123')
+        // Expected password: name + '123'
         const expectedPass = emp.name.trim().toLowerCase() + '123';
         
         if (enteredPass.toLowerCase() !== expectedPass) {
@@ -534,7 +536,7 @@ async function init() {
           return;
         }
 
-        // Successfully verified! Save session and load progress card.
+        // Successfully verified — show progress card, then load full data in background
         const empIdToSave = emp.employeeId || emp.id;
         sessionStorage.setItem("emp_logged_in_id", empIdToSave);
         loginCard.style.display = 'none';
